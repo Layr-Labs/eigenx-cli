@@ -500,6 +500,8 @@ func getAvailableRegistries() ([]registryInfo, error) {
 		return nil, fmt.Errorf("failed to get credentials: %w", err)
 	}
 
+	gcrProjects := make(map[string]registryInfo) // Track GCR projects for deduplication
+
 	var registries []registryInfo
 	for registry, auth := range allCreds {
 		if auth.Username == "" {
@@ -528,7 +530,23 @@ func getAvailableRegistries() ([]registryInfo, error) {
 			continue
 		}
 
+		// Deduplicate GCR registries - regional endpoints (asia.gcr.io, eu.gcr.io, etc.)
+		// point to the same storage, so keep only one entry per project
+		if info.Type == "gcr" {
+			// Prefer canonical gcr.io over regional variants
+			if _, exists := gcrProjects[auth.Username]; !exists || registry == "gcr.io" {
+				info.URL = "gcr.io" // Normalize to canonical URL
+				gcrProjects[auth.Username] = info
+			}
+			continue
+		}
+
 		registries = append(registries, info)
+	}
+
+	// Add deduplicated GCR entries
+	for _, gcrInfo := range gcrProjects {
+		registries = append(registries, gcrInfo)
 	}
 
 	// Sort registries with Docker Hub first
