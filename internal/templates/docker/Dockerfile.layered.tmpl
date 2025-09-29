@@ -1,0 +1,59 @@
+{{- if .IncludeTLS}}
+# Get Caddy from official image
+FROM caddy:2.10.2-alpine AS caddy
+{{- end}}
+
+FROM {{.BaseImage}}
+
+{{- if .OriginalUser}}
+# Switch to root to perform setup (base image has non-root USER: {{.OriginalUser}})
+USER root
+{{- end}}
+
+# Copy core TEE components
+COPY compute-source-env.sh /usr/local/bin/
+COPY kms-client /usr/local/bin/
+COPY kms-encryption-public-key.pem /usr/local/bin/
+COPY kms-signing-public-key.pem /usr/local/bin/
+
+{{- if .IncludeTLS}}
+# Copy Caddy from official image
+COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
+
+# Copy TLS components
+COPY tls-keygen /usr/local/bin/
+COPY Caddyfile /etc/caddy/
+{{- end}}
+
+{{- if .OriginalUser}}
+# Make binaries executable (755 for executables, 644 for keys)
+RUN chmod 755 /usr/local/bin/compute-source-env.sh \
+    && chmod 755 /usr/local/bin/kms-client{{- if .IncludeTLS}} \
+    && chmod 755 /usr/local/bin/tls-keygen \
+    && chmod 755 /usr/local/bin/caddy{{- end}} \
+    && chmod 644 /usr/local/bin/kms-encryption-public-key.pem \
+    && chmod 644 /usr/local/bin/kms-signing-public-key.pem
+
+# Switch back to the original user from base image
+USER {{.OriginalUser}}
+{{- else}}
+# Make binaries executable (preserve existing permissions, just add execute)
+RUN chmod +x /usr/local/bin/compute-source-env.sh \
+    && chmod +x /usr/local/bin/kms-client{{- if .IncludeTLS}} \
+    && chmod +x /usr/local/bin/tls-keygen{{- end}}
+{{- end}}
+
+{{- if .LogRedirect}}
+
+LABEL tee.launch_policy.log_redirect={{.LogRedirect}}
+{{- end}}
+
+LABEL eigenx_cli_version={{.EigenXCLIVersion}}
+
+{{- if .IncludeTLS}}
+# Expose both HTTP and HTTPS ports for Caddy
+EXPOSE 80 443
+{{- end}}
+
+ENTRYPOINT ["/usr/local/bin/compute-source-env.sh"]
+CMD {{.OriginalCmd}}

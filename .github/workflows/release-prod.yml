@@ -1,0 +1,245 @@
+name: Release Production
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "!v*-dev*"  # Exclude all dev tags
+
+permissions:
+  contents: read
+
+env:
+  GOPRIVATE: github.com/Layr-Labs/*
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  lint:
+    uses: ./.github/workflows/golangci-lint.yml
+    secrets:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+  test:
+    uses: ./.github/workflows/tests.yml
+    secrets:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    permissions:
+      contents: write
+      actions: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0  # Fetch all history and tags
+
+      - name: Set version from tag
+        run: |
+          VERSION="${{ github.ref_name }}"
+          DEV_VERSION_PREFIX="$VERSION-dev"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "DEV_VERSION_PREFIX=$DEV_VERSION_PREFIX" >> $GITHUB_ENV
+          echo "Building production version: $VERSION"
+          echo "Will verify dev tag exists: $DEV_VERSION_PREFIX"
+          
+      - name: Verify dev testing occurred
+        run: |
+          echo "Looking for dev tag with prefix: $DEV_VERSION_PREFIX"
+          
+          # Check if dev tag exists (with or without suffix)
+          DEV_TAGS=$(git tag -l "${DEV_VERSION_PREFIX}*" | head -10)
+          if [ -z "$DEV_TAGS" ]; then
+            echo "ERROR: No dev tag found with prefix ${DEV_VERSION_PREFIX}"
+            echo ""
+            echo "Available dev tags:"
+            git tag -l "*-dev*" | head -10 || echo "No dev tags found"
+            echo ""
+            echo "Must test in dev first: git tag ${DEV_VERSION_PREFIX} or ${DEV_VERSION_PREFIX}.1"
+            exit 1
+          fi
+          
+          echo "✅ Found dev tags:"
+          echo "$DEV_TAGS"
+          
+          # Verify dev and prod tags point to same commit
+          PROD_COMMIT=$(git rev-list -n 1 "$VERSION")
+          echo "Production tag $VERSION points to commit: $PROD_COMMIT"
+          
+          for DEV_TAG in $DEV_TAGS; do
+            DEV_COMMIT=$(git rev-list -n 1 "$DEV_TAG")
+            echo "Dev tag $DEV_TAG points to commit: $DEV_COMMIT"
+            
+            if [ "$DEV_COMMIT" = "$PROD_COMMIT" ]; then
+              echo "✅ Dev tag $DEV_TAG verified - same commit as production tag"
+              echo "VERIFIED_DEV_TAG=$DEV_TAG" >> $GITHUB_ENV
+              exit 0
+            fi
+          done
+          
+          echo "ERROR: No dev tag points to the same commit as production tag $VERSION"
+          echo "Production commit: $PROD_COMMIT"
+          echo "Dev tags and their commits:"
+          for DEV_TAG in $DEV_TAGS; do
+            DEV_COMMIT=$(git rev-list -n 1 "$DEV_TAG")
+            echo "  $DEV_TAG: $DEV_COMMIT"
+          done
+          echo ""
+          echo "Create a dev tag on the same commit: git tag ${DEV_VERSION_PREFIX} $PROD_COMMIT"
+          exit 1
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/eigenx-cli-protocol-preprod
+          aws-region: ${{ secrets.AWS_REGION }}
+          
+      - name: Configure git for private repos
+        run: |
+          git config --global url."https://${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Build production binary
+        env:
+          GO_TAGS: prod
+          TELEMETRY_TOKEN: ${{ secrets.TELEMETRY_TOKEN }}
+        run: |
+          go mod tidy
+          echo "Building production binary with version $VERSION"
+          make release
+          sudo chown -R $USER:$USER .
+          ./scripts/bundleReleases.sh $VERSION
+
+      - name: Upload to production S3
+        run: |
+          echo "Uploading production release to S3..."
+
+          get_content_type() {
+            case "$1" in
+              *.tar.gz) echo "application/gzip" ;;
+              *.zip) echo "application/zip" ;;
+              *) echo "" ;;
+            esac
+          }
+
+          # Upload all release artifacts
+          for asset_name in $(ls ./release | grep -E '\.(tar\.gz|zip)$');
+          do
+            asset="./release/${asset_name}"
+            echo "Uploading ${asset_name} to production S3..."
+            content_type=$(get_content_type "$asset_name")
+            if [ -n "$content_type" ]; then
+              aws s3 cp "$asset" "s3://eigenlayer-eigenx-releases/$VERSION/" --content-type "$content_type"
+            else
+              aws s3 cp "$asset" "s3://eigenlayer-eigenx-releases/$VERSION/"
+            fi
+          done
+
+          # Update production VERSION file
+          echo "Updating production VERSION file to $VERSION"
+          echo "$VERSION" > VERSION_PROD
+          aws s3 cp VERSION_PROD "s3://eigenlayer-eigenx-releases/VERSION" --content-type "text/plain"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1.1.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Downloads
+            - [eigenx-cli-darwin-amd64-${{ env.VERSION }}.tar.gz](https://s3.amazonaws.com/eigenlayer-eigenx-releases/${{ env.VERSION }}/eigenx-cli-darwin-amd64-${{ env.VERSION }}.tar.gz)
+            - [eigenx-cli-darwin-arm64-${{ env.VERSION }}.tar.gz](https://s3.amazonaws.com/eigenlayer-eigenx-releases/${{ env.VERSION }}/eigenx-cli-darwin-arm64-${{ env.VERSION }}.tar.gz)
+            - [eigenx-cli-linux-amd64-${{ env.VERSION }}.tar.gz](https://s3.amazonaws.com/eigenlayer-eigenx-releases/${{ env.VERSION }}/eigenx-cli-linux-amd64-${{ env.VERSION }}.tar.gz)
+            - [eigenx-cli-linux-arm64-${{ env.VERSION }}.tar.gz](https://s3.amazonaws.com/eigenlayer-eigenx-releases/${{ env.VERSION }}/eigenx-cli-linux-arm64-${{ env.VERSION }}.tar.gz)
+            - [eigenx-cli-windows-amd64-${{ env.VERSION }}.zip](https://s3.amazonaws.com/eigenlayer-eigenx-releases/${{ env.VERSION }}/eigenx-cli-windows-amd64-${{ env.VERSION }}.zip)
+            - [eigenx-cli-windows-arm64-${{ env.VERSION }}.zip](https://s3.amazonaws.com/eigenlayer-eigenx-releases/${{ env.VERSION }}/eigenx-cli-windows-arm64-${{ env.VERSION }}.zip)
+            
+            **Production release** - Verified dev testing completed with matching commit from ${{ env.VERIFIED_DEV_TAG }}.
+
+      - name: Upload GitHub Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Uploading built artifacts to GitHub release..."
+          
+          echo "Upload URL: ${{ steps.create_release.outputs.upload_url }}"
+          export upload_url=$(echo "${{ steps.create_release.outputs.upload_url }}" | sed -e "s/{?name,label}//")
+      
+          for asset_name in $(ls ./release | grep -E '\.(tar\.gz|zip)$');
+          do
+            asset="./release/${asset_name}"
+            echo "Uploading ${asset_name} to GitHub release..."
+            curl --fail \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: $(file -b --mime-type "$asset")" \
+              --data-binary @"$asset" \
+              "${upload_url}?name=$asset_name"
+          done
+
+      - name: Summary
+        run: |
+          echo "🚀 Production release $VERSION deployed successfully!"
+          echo "📦 Built fresh production binary with clean version"
+          echo "🔒 Verified dev testing completed with matching commit"
+          echo "🔗 Users can install with: curl -sSL install-script | bash"
+          echo "📋 GitHub release: https://github.com/${{ github.repository }}/releases/tag/$VERSION"
+
+  smoke-test-binaries:
+    needs: build-and-deploy 
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
+          - os: ubuntu-latest
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Set version from tag
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Testing release version: $VERSION"
+
+      - name: Install eigenx binary
+        run: |
+          set -euxo pipefail
+          ver="${{ env.VERSION }}"
+          case "${{ matrix.os }}-${{ matrix.arch }}" in
+            "macos-latest-x64")   url="https://s3.amazonaws.com/eigenlayer-eigenx-releases/${ver}/eigenx-cli-darwin-amd64-${ver}.tar.gz" ;;
+            "macos-latest-arm64") url="https://s3.amazonaws.com/eigenlayer-eigenx-releases/${ver}/eigenx-cli-darwin-arm64-${ver}.tar.gz" ;;
+            "ubuntu-latest-x64")  url="https://s3.amazonaws.com/eigenlayer-eigenx-releases/${ver}/eigenx-cli-linux-amd64-${ver}.tar.gz" ;;
+            "ubuntu-latest-arm64")url="https://s3.amazonaws.com/eigenlayer-eigenx-releases/${ver}/eigenx-cli-linux-arm64-${ver}.tar.gz" ;;
+            *) echo "Unsupported combination"; exit 1 ;;
+          esac
+          mkdir -p "$HOME/bin"
+          curl -fsSL "$url" | tar xzv -C "$HOME/bin"
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Verify binary version
+        run: |
+          ver="${{ env.VERSION }}"
+          installed=$(eigenx version | awk '/^Version:/ { print $2 }')
+          if [[ "$installed" != "$ver" ]]; then
+            echo "✖ Version mismatch: expected $ver, got $installed"
+            exit 1
+          fi
+          echo "✅ Binary version $installed verified"
+
+  smoke-test-app-creation:
+    needs: build-and-deploy
+    uses: ./.github/workflows/create.yml
+    with:
+      eigenx_install_method: "download"
+      eigenx_version: ${{ github.ref_name }}
+    secrets:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}

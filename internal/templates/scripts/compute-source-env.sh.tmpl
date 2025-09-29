@@ -1,0 +1,111 @@
+#!/bin/sh
+echo "compute-source-env.sh: Running setup script..."
+
+# Fetch and source environment variables from KMS
+echo "Fetching secrets from KMS..."
+if /usr/local/bin/kms-client \
+  --kms-server-url "{{.KMSServerURL}}" \
+  --jwt-file "{{.JWTFile}}" \
+  --kms-encryption-key-file /usr/local/bin/kms-encryption-public-key.pem \
+  --kms-signing-key-file /usr/local/bin/kms-signing-public-key.pem \
+  --output /tmp/.env; then
+    echo "compute-source-env.sh: Successfully fetched environment variables from KMS"
+    set -a && . /tmp/.env && set +a
+    rm -f /tmp/.env
+else
+    echo "compute-source-env.sh: ERROR - Failed to fetch environment variables from KMS"
+    echo "compute-source-env.sh: Exiting - cannot start user workload without KMS secrets"
+    exit 1
+fi
+
+# Setup TLS if tls-keygen is present (which means TLS was configured at build time)
+setup_tls() {
+    # If tls-keygen isn't present, TLS wasn't configured during build
+    if [ ! -x /usr/local/bin/tls-keygen ]; then
+        echo "compute-source-env.sh: TLS not configured (no tls-keygen binary)"
+        return 0
+    fi
+    
+    local domain="${DOMAIN:-}"
+    local mnemonic="${MNEMONIC:-}"
+    
+    # Since tls-keygen is present, TLS is expected - validate requirements
+    if [ -z "$domain" ] || [ "$domain" = "localhost" ]; then
+        echo "compute-source-env.sh: ERROR - TLS binary present but DOMAIN not configured or is localhost"
+        echo "compute-source-env.sh: Set DOMAIN environment variable to a valid domain"
+        exit 1
+    fi
+    
+    if [ -z "$mnemonic" ]; then
+        echo "compute-source-env.sh: ERROR - TLS binary present but MNEMONIC not available"
+        echo "compute-source-env.sh: Cannot obtain TLS certificate without mnemonic"
+        exit 1
+    fi
+    
+    if [ ! -x /usr/local/bin/caddy ]; then
+        echo "compute-source-env.sh: ERROR - TLS binary present but Caddy not found"
+        exit 1
+    fi
+    
+    echo "compute-source-env.sh: Setting up TLS for domain: $domain"
+    
+    # Obtain TLS certificate using ACME
+    # Default to http-01, but allow override via ACME_CHALLENGE env var
+    local challenge="${ACME_CHALLENGE:-http-01}"
+    
+    # Check if we should use staging (for testing)
+    local staging_flag=""
+    if [ "${ACME_STAGING:-false}" = "true" ]; then
+        staging_flag="-staging"
+        echo "compute-source-env.sh: Using Let's Encrypt STAGING environment (certificates won't be trusted)"
+    fi
+    
+    echo "compute-source-env.sh: Obtaining TLS certificate using $challenge challenge..."
+    # Pass the API URL for certificate persistence
+    if ! MNEMONIC="$mnemonic" DOMAIN="$domain" API_URL="{{.UserAPIURL}}" /usr/local/bin/tls-keygen \
+        -challenge "$challenge" \
+        $staging_flag; then
+        echo "compute-source-env.sh: ERROR - Failed to obtain TLS certificate"
+        echo "compute-source-env.sh: Certificate issuance failed for $domain"
+        exit 1
+    fi
+    
+    echo "compute-source-env.sh: TLS certificate obtained successfully"
+    
+    # Validate Caddyfile before starting
+    if ! /usr/local/bin/caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null; then
+        echo "compute-source-env.sh: ERROR - Invalid Caddyfile"
+        echo "compute-source-env.sh: TLS was requested (DOMAIN=$domain) but setup failed"
+        exit 1
+    fi
+    
+    # Start Caddy in background
+    echo "compute-source-env.sh: Starting Caddy reverse proxy..."
+    
+    # Check if Caddy logs should be enabled
+    if [ "${ENABLE_CADDY_LOGS:-false}" = "true" ]; then
+        if ! /usr/local/bin/caddy start --config /etc/caddy/Caddyfile --adapter caddyfile 2>&1; then
+            echo "compute-source-env.sh: ERROR - Failed to start Caddy"
+            echo "compute-source-env.sh: TLS was requested (DOMAIN=$domain) but setup failed"
+            exit 1
+        fi
+    else
+        # Redirect Caddy output to /dev/null to silence logs
+        if ! /usr/local/bin/caddy start --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then
+            echo "compute-source-env.sh: ERROR - Failed to start Caddy"
+            echo "compute-source-env.sh: TLS was requested (DOMAIN=$domain) but setup failed"
+            exit 1
+        fi
+    fi
+    
+    # Give Caddy a moment to fully initialize
+    sleep 2
+    echo "compute-source-env.sh: Caddy started successfully"
+    return 0
+}
+
+# Run TLS setup
+setup_tls
+
+echo "compute-source-env.sh: Environment sourced."
+exec "$@"

@@ -1,0 +1,75 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+eigenx
+
+# Build outputs
+/bin/
+/out/
+
+# Dependency directories (if you're not committing vendor)
+vendor/
+
+# Go module caches (optional, as these are local)
+# /go/pkg/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+
+# Release outputs
+temp_external/
+
+# Environment
+.env
+
+# Language-specific build outputs
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tgz
+dist/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.tox/
+.coverage
+.pytest_cache/
+
+# Rust
+target/
+Cargo.lock
+
+# Go
+*.test
+*.prof

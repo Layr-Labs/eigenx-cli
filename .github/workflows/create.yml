@@ -1,0 +1,78 @@
+name: EigenX App Create Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+  workflow_call:
+    inputs:
+      eigenx_install_method:
+        description: 'How to install eigenx: "build" (make install) or "download" (from release)'
+        required: false
+        type: string
+        default: "build"
+      eigenx_version:
+        description: 'Version to download (only used when install_method is "download")'
+        required: false
+        type: string
+    secrets:
+      GH_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  GOPRIVATE: github.com/Layr-Labs/*
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  create-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: "1.24.x"
+          
+      - name: Configure git for private repos
+        run: |
+          git config --global url."https://${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          echo "HOME=$HOME" >> $GITHUB_ENV
+        
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@82dee4ba654bd2146511f85f0d013af94670c4de # v1.4.0
+        with:
+          version: stable
+
+      - name: Install eigenx CLI (build)
+        if: inputs.eigenx_install_method == 'build' || github.event_name != 'workflow_call'
+        run: make install
+
+      - name: Install eigenx CLI (download)
+        if: inputs.eigenx_install_method == 'download' && github.event_name == 'workflow_call'
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -fsSL "https://s3.amazonaws.com/eigenlayer-eigenx-releases/${{ inputs.eigenx_version }}/eigenx-cli-linux-amd64-${{ inputs.eigenx_version }}.tar.gz" | tar xv -C "$HOME/bin"
+
+      - name: Add ~/bin to PATH
+        run: echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Run eigenx app create
+        run: |
+          cd /tmp
+          eigenx app create --disable-telemetry my-awesome-app ts
+
+      - name: Verify app project created
+        run: |
+          if [ ! -f "/tmp/my-awesome-app/Dockerfile" ]; then
+            echo "❌ App project Dockerfile not found!"
+            exit 1
+          fi
+          echo "✅ App project created successfully at /tmp/my-awesome-app/"

@@ -1,0 +1,29 @@
+name: PR
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint-pr-title:
+    runs-on: ubuntu-latest
+    name: Title
+    steps:
+      - name: Fetch PR Title
+        run: |
+          PR_TITLE=$(jq -r '.pull_request.title' "$GITHUB_EVENT_PATH")
+          echo "PR title: $PR_TITLE"
+
+          # Define the valid pattern (supports conventional commit format)
+          if [[ ! "$PR_TITLE" =~ ^(release|feat|fix|chore|docs|refactor|test|style|ci|perf)(\(.*?\))?:\ .* ]]; then
+            echo "❌ Invalid PR title: '$PR_TITLE'"
+            echo "Expected format: 'type: description' or 'type(scope): description'"
+            echo "Allowed types: release, feat, fix, chore, docs, refactor, test, style, ci, perf."
+            exit 1
+          fi
+
+          echo "✅ PR title is valid"
