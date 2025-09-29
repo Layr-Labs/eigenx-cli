@@ -365,8 +365,6 @@ EIGENX_TEMPLATES_PATH=/path/to/eigenx-templates EIGENX_USE_LOCAL_TEMPLATES=true 
 
 This uses templates from your local `eigenx-templates/` directory instead of fetching from GitHub.
 
-## License
-
 ### Dev Releases
 
 For testing new features before production:
