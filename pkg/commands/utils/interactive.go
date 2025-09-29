@@ -533,8 +533,7 @@ func getAvailableRegistries() ([]registryInfo, error) {
 		// Deduplicate GCR registries - regional endpoints (asia.gcr.io, eu.gcr.io, etc.)
 		// point to the same storage, so keep only one entry per project
 		if info.Type == "gcr" {
-			// Prefer canonical gcr.io over regional variants
-			if _, exists := gcrProjects[auth.Username]; !exists || registry == "gcr.io" {
+			if _, exists := gcrProjects[auth.Username]; !exists {
 				info.URL = "gcr.io" // Normalize to canonical URL
 				gcrProjects[auth.Username] = info
 			}
