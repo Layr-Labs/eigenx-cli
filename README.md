@@ -11,9 +11,9 @@ EigenX lets you deploy containerized applications that run in secure, verifiable
 - **Sepolia ETH** - For deployment transactions ([Google Cloud Faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) | [Alchemy Faucet](https://sepoliafaucet.com/))
 
 ## Mainnet Alpha Limitations
-- ** Not recommended for customer funds ** - Mainnet Alpha is intended to enable developers to build, test and ship applications. We do not recommend holding significant customer funds at this stage in Mainnet Alpha.
-- ** Developer is still trusted ** - Mainnet Alpha does not enable full verifiable and trustless execution. A later version will ensure developers can not upgrade code maliciously, and liveness gaurantees.
-- ** No SLA ** - Mainnet Alpha does not have SLAs around support, and uptime of infrastructure. 
+- **Not recommended for customer funds** - Mainnet Alpha is intended to enable developers to build, test and ship applications. We do not recommend holding significant customer funds at this stage in Mainnet Alpha.
+- **Developer is still trusted** - Mainnet Alpha does not enable full verifiable and trustless execution. A later version will ensure developers can not upgrade code maliciously, and liveness gaurantees.
+- **No SLA** - Mainnet Alpha does not have SLAs around support, and uptime of infrastructure. 
 
 ## **Quick Start**
 
