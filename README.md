@@ -29,7 +29,7 @@ curl -fsSL https://eigenx-scripts.s3.us-east-1.amazonaws.com/install-eigenx.sh |
 curl -fsSL https://eigenx-scripts.s3.us-east-1.amazonaws.com/install-eigenx.ps1 | powershell -
 ```
 
-### Setup (One-time)
+### Initial Setup 
 ```bash
 # Log in to your Docker registry (required to push images)
 docker login
