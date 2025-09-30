@@ -50,7 +50,7 @@ func NewUserApiClient(cCtx *cli.Context) (*UserApiClient, error) {
 	}
 
 	// Create transport with TLS config that skips certificate verification
-	// This is useful for development/testing environments
+	// TODO: Remove this once we have a valid certificate from a known CA
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
