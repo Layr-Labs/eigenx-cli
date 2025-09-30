@@ -246,6 +246,8 @@ ACME_FORCE_ISSUE=true  # Only if staging cert exists
 | `eigenx app info [app-id\|name]` | Show detailed app information |
 | `eigenx app logs [app-id\|name]` | View application logs |
 
+**Watch Mode:** Add `--watch` (or `-w`) to `info` or `logs` commands to continuously poll for updates
+
 ### Deployment Environment Management
 
 | Command | Description |
