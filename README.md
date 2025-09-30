@@ -1,6 +1,6 @@
 # EigenX CLI
 
-**Deploy Docker containers in Trusted Execution Environments (TEEs) via smart contracts**
+**Deploy verifiable applications in Trusted Execution Environments (TEEs)**
 
 EigenX lets you deploy containerized applications that run in secure, verifiable compute environments with built-in private key management. Your apps get a unique wallet they control, enabling autonomous onchain actions while keeping secrets safe.
 
@@ -436,4 +436,16 @@ curl -fsSL https://eigenx-scripts.s3.us-east-1.amazonaws.com/install-eigenx.sh |
 Both versions can coexist on the same system.
 
 ## Disclaimer
-🚧 eigenx-cli is under active development and has not been audited. eigenx-cli is rapidly being upgraded, features may be added, removed or otherwise improved or modified and interfaces will have breaking changes. eigenx-cli should be used only for testing purposes and not in production. eigenx-cli is provided "as is" and Eigen Labs, Inc. does not guarantee its functionality or provide support for its use in production. 🚧
+
+**🚧 eigenx-cli is in alpha, under active development, and has not been audited.**
+
+- Features may be added, removed, or modified
+- Interfaces will have breaking changes
+- Should be used **only for testing purposes** and **not in production**
+- Provided "as is" without guarantee of functionality or production support
+
+**Eigen Labs, Inc. does not provide support for production use.**
+
+## Security
+
+If you discover a vulnerability, please **do not** open an issue. Instead contact the maintainers directly at `security@eigenlabs.org`.
