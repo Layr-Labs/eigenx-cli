@@ -73,6 +73,12 @@ var (
 		Name:  "log-visibility",
 		Usage: "Log visibility setting: public, private, or off",
 	}
+
+	FollowFlag = &cli.BoolFlag{
+		Name:    "follow",
+		Aliases: []string{"f"},
+		Usage:   "Follow log output",
+	}
 )
 
 // GlobalFlags defines flags that apply to the entire application (global flags).

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/Layr-Labs/eigenx-cli/pkg/commands/utils"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
@@ -11,6 +12,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli/v2"
+)
+
+const (
+	LOG_ROTATION_THRESHOLD = 1024
+	LOG_POLL_INTERVAL      = 2 * time.Second
 )
 
 var ListCommand = &cli.Command{
@@ -45,6 +51,7 @@ var LogsCommand = &cli.Command{
 	Flags: append(common.GlobalFlags, []cli.Flag{
 		common.EnvironmentFlag,
 		common.RpcUrlFlag,
+		common.FollowFlag,
 	}...),
 	Action: logsAction,
 }
@@ -148,16 +155,10 @@ func infoAction(cCtx *cli.Context) error {
 
 func logsAction(cCtx *cli.Context) error {
 	fmt.Println()
-	logger := common.LoggerFromContext(cCtx)
 
 	appID, err := utils.GetAppIDInteractive(cCtx, 0, "view logs for")
 	if err != nil {
 		return fmt.Errorf("failed to get app address: %w", err)
-	}
-
-	environmentConfig, err := utils.GetEnvironmentConfig(cCtx)
-	if err != nil {
-		return fmt.Errorf("failed to get environment config: %w", err)
 	}
 
 	userApiClient, err := utils.NewUserApiClient(cCtx)
@@ -165,42 +166,66 @@ func logsAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to create API client: %w", err)
 	}
 
-	formattedApp := common.FormatAppDisplay(environmentConfig.Name, appID)
+	follow := cCtx.Bool(common.FollowFlag.Name)
 
-	logs, err := userApiClient.GetLogs(cCtx, appID)
-	if err != nil || strings.TrimSpace(logs) == "" {
-		// If logs fetch fails or is empty, check app status to provide helpful message
-		statuses, statusErr := userApiClient.GetStatuses(cCtx, []ethcommon.Address{appID})
-		if statusErr == nil && len(statuses.Apps) > 0 {
-			status := statuses.Apps[0].Status
-			switch status {
-			case common.AppStatusCreated, common.AppStatusDeploying:
-				logger.Info("%s is currently being provisioned. Logs will be available once deployment is complete.", formattedApp)
-				return nil
-			case common.AppStatusUpgrading:
-				logger.Info("%s is currently upgrading. Logs will be available once upgrade is complete.", formattedApp)
-				return nil
-			case common.AppStatusResuming:
-				logger.Info("%s is currently resuming. Logs will be available shortly.", formattedApp)
-				return nil
-			case common.AppStatusStopping:
-				logger.Info("%s is currently stopping. Logs may be limited.", formattedApp)
-				return nil
-			case common.AppStatusStopped, common.AppStatusTerminating, common.AppStatusTerminated:
-				logger.Info("%s is %s. Logs are not available.", formattedApp, strings.ToLower(status))
-				return nil
-			case common.AppStatusFailed:
-				logger.Info("%s has failed. Check the app status for more information.", formattedApp)
-			}
-		}
-		// If we can't get status either, return the original logs error
+	// Track previously seen logs to only show new content
+	var previousLogs string
+
+	for {
+		logs, err := userApiClient.GetLogs(cCtx, appID)
 		if err != nil {
 			return fmt.Errorf("failed to get logs: %w", err)
 		}
-		return fmt.Errorf("failed to get logs: empty logs")
+		// Print only new logs
+		if logs != previousLogs {
+			if previousLogs == "" {
+				// First fetch: print all logs
+				fmt.Print(logs)
+			} else {
+				// Find where the new logs start by looking for the longest suffix
+				// of previousLogs that is a prefix of logs
+				newContent := findNewLogContent(previousLogs, logs)
+				if newContent != "" {
+					fmt.Print(newContent)
+				}
+			}
+			previousLogs = logs
+		}
+
+		// If not following, exit after first fetch
+		if !follow {
+			fmt.Println()
+			return nil
+		}
+
+		// Wait before next poll
+		time.Sleep(LOG_POLL_INTERVAL)
+	}
+}
+
+// findNewLogContent finds the new content in logs that wasn't in previousLogs.
+// It handles cases where logs may have been rotated (previousLogs suffix matches logs prefix).
+func findNewLogContent(previousLogs, logs string) string {
+	// If logs start with all of previousLogs, return just the new part
+	if strings.HasPrefix(logs, previousLogs) {
+		return strings.TrimPrefix(logs, previousLogs)
 	}
 
-	fmt.Println(logs)
-	fmt.Println()
-	return nil
+	// Find the longest suffix of previousLogs that is a prefix of logs
+	// This handles log rotation where some old logs are included
+	for i := 1; i < len(previousLogs); i++ {
+		suffix := previousLogs[i:]
+		if strings.HasPrefix(logs, suffix) {
+			// Found overlap, return only the new content
+			return strings.TrimPrefix(logs, suffix)
+		}
+	}
+
+	// must be longer than the rotation threshold
+	if len(logs) < LOG_ROTATION_THRESHOLD {
+		return logs
+	}
+
+	// No overlap found, logs were completely replaced
+	return logs
 }
