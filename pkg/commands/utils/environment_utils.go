@@ -41,7 +41,7 @@ func GetEnvironmentDescription(name, fallback string, withPrefix bool) string {
 	case "sepolia":
 		description = "Ethereum Sepolia testnet"
 	case "mainnet-alpha":
-		description = "Ethereum mainnet (⚠️  real funds at risk)"
+		description = "Ethereum mainnet (⚠️  uses real funds)"
 	default:
 		description = fallback
 	}
