@@ -6,7 +6,7 @@ EigenX lets you deploy containerized applications that run in secure, verifiable
 
 ## Prerequisites
 
-- **Allowlisted Account** - Required to create apps. Use existing address or generate with `eigenx auth generate`. Submit to Eigen team for allowlisting.
+- **Allowlisted Account** - Required to create apps. Use existing address with `eigenx auth login` or generate with `eigenx auth generate`. Submit an onboarding request [here](https://onboarding.eigencloud.xyz).
 - **Docker** - To package and publish application images ([Download](https://www.docker.com/get-started/))
 - **Sepolia ETH** - For deployment transactions ([Google Cloud Faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) | [Alchemy Faucet](https://sepoliafaucet.com/))
 
@@ -34,11 +34,11 @@ curl -fsSL https://eigenx-scripts.s3.us-east-1.amazonaws.com/install-eigenx.ps1 
 # Log in to your Docker registry (required to push images)
 docker login
 
-# Generate and store your private key
-eigenx auth generate --store
+# Log in with an existing private key
+eigenx auth login
 ```
 
-**Already have a private key?** Use `eigenx auth login` instead
+**Don't have a private key?** Use `eigenx auth generate --store` instead
 
 **Need Sepolia ETH?** Run `eigenx auth whoami` to see your address, then get funds from [Google Cloud](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) or [Alchemy](https://sepoliafaucet.com/)
 
@@ -316,19 +316,16 @@ eigenx telemetry --enable
 
 Telemetry settings are stored globally and persist across all projects.
 
-## Architecture Overview
+## Architecture
 
-### How TEEs Work
+For a detailed understanding of how EigenX enables verifiable applications with deterministic identities, see our [Architecture Documentation](EIGENX_ARCHITECTURE.md).
 
-- **Hardware Isolation** - Secure enclaves separated from host OS
-- **Attestation** - Cryptographic proof of code integrity
-- **Secure Key Access** - Private keys via Google KMS, accessible only to verified TEEs
+### Key Components
 
-### Smart Contract Integration
-
-- Register and verify TEE deployments
-- Manage app lifecycle and updates
-- Coordinate developers and infrastructure
+- **Hardware Isolation** - Intel TDX secure enclaves with memory encryption
+- **Attestation** - Cryptographic proof of exact Docker image integrity
+- **Deterministic Keys** - Apps receive consistent identities via KMS
+- **Smart Contracts** - Onchain configuration and lifecycle management
 
 ## Development
 
@@ -369,6 +366,19 @@ EIGENX_TEMPLATES_PATH=/path/to/eigenx-templates EIGENX_USE_LOCAL_TEMPLATES=true 
 ```
 
 This uses templates from your local `eigenx-templates/` directory instead of fetching from GitHub.
+
+## Core Concepts
+
+For in-depth understanding of EigenX concepts, see [EIGENX_CONCEPTS.md](./EIGENX_CONCEPTS.md):
+
+- [**Keys**](./EIGENX_CONCEPTS.md#overview-of-keys) - Auth keys vs TEE mnemonics, storage locations, and security model
+- [**Environment Variables**](./EIGENX_CONCEPTS.md#overview-of-environment-variables) - Encryption, public variables, and KMS security
+- [**App Lifecycle**](./EIGENX_CONCEPTS.md#overview-of-app-lifecycle) - States, transitions, and lifecycle flow diagram
+- [**Privacy**](./EIGENX_CONCEPTS.md#overview-of-privacy) - What's private, what's public, and privacy guarantees
+- [**Security Best Practices**](./EIGENX_CONCEPTS.md#security-best-practices) - Do's and don'ts for secure TEE development
+- [**Threat Model**](./EIGENX_CONCEPTS.md#threat-model) - What TEE/KMS protects against and security boundaries
+
+## License
 
 ### Dev Releases
 
