@@ -73,6 +73,12 @@ var (
 		Name:  "log-visibility",
 		Usage: "Log visibility setting: public, private, or off",
 	}
+
+	WatchFlag = &cli.BoolFlag{
+		Name:    "watch",
+		Aliases: []string{"w"},
+		Usage:   "Continuously fetch and display updates",
+	}
 )
 
 // GlobalFlags defines flags that apply to the entire application (global flags).

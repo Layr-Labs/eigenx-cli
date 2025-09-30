@@ -87,5 +87,6 @@ func upgradeAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to upgrade app: %w", err)
 	}
 
-	return utils.GetAndPrintAppInfo(cCtx, appID, "Upgrading")
+	// 11. Watch until app is running
+	return utils.WatchUntilRunning(cCtx, appID, common.AppStatusUpgrading)
 }

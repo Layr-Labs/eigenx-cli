@@ -1,9 +1,13 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"math/big"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/Layr-Labs/eigenx-cli/pkg/commands/utils"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
@@ -34,6 +38,7 @@ var InfoCommand = &cli.Command{
 		common.EnvironmentFlag,
 		common.RpcUrlFlag,
 		common.AddressCountFlag,
+		common.WatchFlag,
 	}...),
 	Action: infoAction,
 }
@@ -45,6 +50,7 @@ var LogsCommand = &cli.Command{
 	Flags: append(common.GlobalFlags, []cli.Flag{
 		common.EnvironmentFlag,
 		common.RpcUrlFlag,
+		common.WatchFlag,
 	}...),
 	Action: logsAction,
 }
@@ -143,7 +149,13 @@ func infoAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get app address: %w", err)
 	}
 
-	return utils.GetAndPrintAppInfo(cCtx, appID)
+	// Check if watch mode is enabled
+	if !cCtx.Bool(common.WatchFlag.Name) {
+		return utils.GetAndPrintAppInfo(cCtx, appID)
+	}
+
+	// Watch mode: continuously fetch and display info
+	return utils.WatchAppInfoLoop(cCtx, appID, nil, nil)
 }
 
 func logsAction(cCtx *cli.Context) error {
@@ -168,8 +180,17 @@ func logsAction(cCtx *cli.Context) error {
 	formattedApp := common.FormatAppDisplay(environmentConfig.Name, appID)
 
 	logs, err := userApiClient.GetLogs(cCtx, appID)
+	watchMode := cCtx.Bool(common.WatchFlag.Name)
+
 	if err != nil || strings.TrimSpace(logs) == "" {
-		// If logs fetch fails or is empty, check app status to provide helpful message
+		// If watch mode is enabled, enter watch loop even without initial logs
+		if watchMode {
+			logger.Info("Waiting for logs to become available...")
+			fmt.Println()
+			return watchLogs(cCtx, appID, userApiClient, "")
+		}
+
+		// Not watch mode - check app status to provide helpful message and exit
 		statuses, statusErr := userApiClient.GetStatuses(cCtx, []ethcommon.Address{appID})
 		if statusErr == nil && len(statuses.Apps) > 0 {
 			status := statuses.Apps[0].Status
@@ -201,6 +222,67 @@ func logsAction(cCtx *cli.Context) error {
 	}
 
 	fmt.Println(logs)
-	fmt.Println()
-	return nil
+
+	// Check if watch mode is enabled
+	if !watchMode {
+		return nil
+	}
+
+	// Watch mode: continuously fetch and display new logs
+	return watchLogs(cCtx, appID, userApiClient, logs)
+}
+
+func watchLogs(cCtx *cli.Context, appID ethcommon.Address, userApiClient *utils.UserApiClient, initialLogs string) error {
+	// Set up signal handling for graceful shutdown
+	ctx, cancel := context.WithCancel(cCtx.Context)
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		cancel()
+	}()
+
+	// Track previously seen logs
+	prevLogs := initialLogs
+
+	// Main watch loop
+	for {
+		// Reset terminal formatting before countdown (in case logs contained ANSI codes)
+		fmt.Print("\033[0m")
+		// Show countdown
+		utils.ShowCountdown(ctx, 5)
+
+		select {
+		case <-ctx.Done():
+			fmt.Println("\nStopped watching")
+			return nil
+		default:
+			// Fetch fresh logs
+			newLogs, err := userApiClient.GetLogs(cCtx, appID)
+			if err != nil {
+				// Silently continue on error in watch mode
+				continue
+			}
+
+			// Only print new content
+			if newLogs != prevLogs {
+				// Clear the countdown line and add spacing
+				fmt.Print("\r\033[K\033[A\033[K")
+
+				if strings.HasPrefix(newLogs, prevLogs) {
+					// Normal append - show only new content
+					newContent := newLogs[len(prevLogs):]
+					fmt.Print(newContent)
+				} else {
+					// Logs changed (restart, rotation, etc)
+					fmt.Println("--- Logs changed (app may have restarted) ---")
+					fmt.Print(newLogs)
+				}
+				fmt.Println() // Add blank line before countdown
+				prevLogs = newLogs
+			}
+		}
+	}
 }
