@@ -31,7 +31,7 @@ var EnvironmentConfigs = map[string]EnvironmentConfig{
 		PermissionControllerAddress: ChainAddresses[MainnetChainID].PermissionController,
 		ERC7702DelegatorAddress:     CommonAddresses.ERC7702Delegator,
 		KMSServerURL:                "http://10.128.0.2:8080",
-		UserApiServerURL:            "http://34.111.197.23",
+		UserApiServerURL:            "https://userapi-compute.eigencloud.xyz",
 		DefaultRPCURL:               "https://ethereum-rpc.publicnode.com",
 	},
 }
