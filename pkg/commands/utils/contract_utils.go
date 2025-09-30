@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"os"
-	"os/signal"
 	"slices"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
@@ -436,17 +433,6 @@ func CheckAppLogPermission(cCtx *cli.Context, appAddress ethcommon.Address) (boo
 func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition func(string, string) (bool, error), notifyOnStates []string, statusOverride ...string) error {
 	logger := common.LoggerFromContext(cCtx)
 
-	// Set up signal handling for graceful shutdown
-	ctx, cancel := context.WithCancel(cCtx.Context)
-	defer cancel()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		cancel()
-	}()
-
 	// Display initial info (with optional status override)
 	if err := GetAndPrintAppInfo(cCtx, appID, statusOverride...); err != nil {
 		return err
@@ -478,10 +464,10 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 	// Main watch loop
 	for {
 		// Show countdown
-		ShowCountdown(ctx, WatchPollIntervalSeconds)
+		ShowCountdown(cCtx.Context, WatchPollIntervalSeconds)
 
 		select {
-		case <-ctx.Done():
+		case <-cCtx.Context.Done():
 			fmt.Println("\nStopped watching")
 			return nil
 		default:

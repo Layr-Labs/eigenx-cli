@@ -1,13 +1,9 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"math/big"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	"github.com/Layr-Labs/eigenx-cli/pkg/commands/utils"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
@@ -233,17 +229,6 @@ func logsAction(cCtx *cli.Context) error {
 }
 
 func watchLogs(cCtx *cli.Context, appID ethcommon.Address, userApiClient *utils.UserApiClient, initialLogs string) error {
-	// Set up signal handling for graceful shutdown
-	ctx, cancel := context.WithCancel(cCtx.Context)
-	defer cancel()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		cancel()
-	}()
-
 	// Track previously seen logs
 	prevLogs := initialLogs
 
@@ -252,10 +237,10 @@ func watchLogs(cCtx *cli.Context, appID ethcommon.Address, userApiClient *utils.
 		// Reset terminal formatting before countdown (in case logs contained ANSI codes)
 		fmt.Print("\033[0m")
 		// Show countdown
-		utils.ShowCountdown(ctx, 5)
+		utils.ShowCountdown(cCtx.Context, 5)
 
 		select {
-		case <-ctx.Done():
+		case <-cCtx.Context.Done():
 			fmt.Println("\nStopped watching")
 			return nil
 		default:
