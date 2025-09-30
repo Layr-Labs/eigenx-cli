@@ -442,13 +442,6 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 	var prevStatus string
 	var prevIP string
 
-	// Get initial state
-	client, _, err := GetAppControllerBinding(cCtx)
-	if err != nil {
-		return fmt.Errorf("failed to get contract caller: %w", err)
-	}
-	defer client.Close()
-
 	userApiClient, err := NewUserApiClient(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to get userApi client: %w", err)
