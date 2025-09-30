@@ -318,7 +318,7 @@ Telemetry settings are stored globally and persist across all projects.
 
 ## Architecture
 
-For a detailed understanding of how EigenX enables verifiable applications with deterministic identities, see our [Architecture Documentation](EIGENX_ARCHITECTURE.md).
+For a detailed understanding of how EigenX enables verifiable applications with deterministic identities, see our [Architecture Documentation](docs/EIGENX_ARCHITECTURE.md).
 
 ### Key Components
 
@@ -369,14 +369,14 @@ This uses templates from your local `eigenx-templates/` directory instead of fet
 
 ## Core Concepts
 
-For in-depth understanding of EigenX concepts, see [EIGENX_CONCEPTS.md](./EIGENX_CONCEPTS.md):
+For in-depth understanding of EigenX concepts, see [EIGENX_CONCEPTS.md](docs/EIGENX_CONCEPTS.md):
 
-- [**Keys**](./EIGENX_CONCEPTS.md#overview-of-keys) - Auth keys vs TEE mnemonics, storage locations, and security model
-- [**Environment Variables**](./EIGENX_CONCEPTS.md#overview-of-environment-variables) - Encryption, public variables, and KMS security
-- [**App Lifecycle**](./EIGENX_CONCEPTS.md#overview-of-app-lifecycle) - States, transitions, and lifecycle flow diagram
-- [**Privacy**](./EIGENX_CONCEPTS.md#overview-of-privacy) - What's private, what's public, and privacy guarantees
-- [**Security Best Practices**](./EIGENX_CONCEPTS.md#security-best-practices) - Do's and don'ts for secure TEE development
-- [**Threat Model**](./EIGENX_CONCEPTS.md#threat-model) - What TEE/KMS protects against and security boundaries
+- [**Keys**](docs/EIGENX_CONCEPTS.md#overview-of-keys) - Auth keys vs TEE mnemonics, storage locations, and security model
+- [**Environment Variables**](docs/EIGENX_CONCEPTS.md#overview-of-environment-variables) - Encryption, public variables, and KMS security
+- [**App Lifecycle**](docs/EIGENX_CONCEPTS.md#overview-of-app-lifecycle) - States, transitions, and lifecycle flow diagram
+- [**Privacy**](docs/EIGENX_CONCEPTS.md#overview-of-privacy) - What's private, what's public, and privacy guarantees
+- [**Security Best Practices**](docs/EIGENX_CONCEPTS.md#security-best-practices) - Do's and don'ts for secure TEE development
+- [**Threat Model**](docs/EIGENX_CONCEPTS.md#threat-model) - What TEE/KMS protects against and security boundaries
 
 ## License
 
