@@ -22,11 +22,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const (
-	// WatchPollIntervalSeconds is the interval between watch loop polls in seconds
-	WatchPollIntervalSeconds = 5
-)
-
 // GetAppID gets the app id from CLI args or auto-detects from project context. App id is the address of the app contract on L1.
 func GetAppID(cCtx *cli.Context, argIndex int) (ethcommon.Address, error) {
 	// Check if app_id provided as argument
@@ -457,7 +452,7 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 	// Main watch loop
 	for {
 		// Show countdown
-		ShowCountdown(cCtx.Context, WatchPollIntervalSeconds)
+		ShowCountdown(cCtx.Context, common.WatchPollIntervalSeconds)
 
 		select {
 		case <-cCtx.Context.Done():

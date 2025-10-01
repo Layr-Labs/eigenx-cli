@@ -229,15 +229,15 @@ func logsAction(cCtx *cli.Context) error {
 }
 
 func watchLogs(cCtx *cli.Context, appID ethcommon.Address, userApiClient *utils.UserApiClient, initialLogs string) error {
+	const tailSize = 65536 // 64KB
+
 	// Track previously seen logs
 	prevLogs := initialLogs
 
-	// Main watch loop
 	for {
 		// Reset terminal formatting before countdown (in case logs contained ANSI codes)
 		fmt.Print("\033[0m")
-		// Show countdown
-		utils.ShowCountdown(cCtx.Context, 5)
+		utils.ShowCountdown(cCtx.Context, common.WatchPollIntervalSeconds)
 
 		select {
 		case <-cCtx.Context.Done():
@@ -251,23 +251,36 @@ func watchLogs(cCtx *cli.Context, appID ethcommon.Address, userApiClient *utils.
 				continue
 			}
 
-			// Only print new content
-			if newLogs != prevLogs {
-				// Clear the countdown line and add spacing
-				fmt.Print("\r\033[K\033[A\033[K")
+			// Skip if no new logs
+			if newLogs == prevLogs {
+				continue
+			}
 
-				if strings.HasPrefix(newLogs, prevLogs) {
-					// Normal append - show only new content
-					newContent := newLogs[len(prevLogs):]
-					fmt.Print(newContent)
+			// Clear the countdown line and add spacing
+			fmt.Print("\r\033[K\033[A\033[K")
+
+			if strings.HasPrefix(newLogs, prevLogs) {
+				// Normal append - show only new content
+				newContent := newLogs[len(prevLogs):]
+				fmt.Print(newContent)
+			} else {
+				// Check if logs were truncated (old tail matches somewhere in new)
+				tail := prevLogs[max(0, len(prevLogs)-tailSize):] // Last 64KB
+				if idx := strings.LastIndex(newLogs, tail); idx != -1 {
+					// Found the tail at position idx
+					// Print everything after where the old logs ended
+					fmt.Print(newLogs[idx+len(tail):])
 				} else {
-					// Logs changed (restart, rotation, etc)
-					fmt.Println("--- Logs changed (app may have restarted) ---")
+					if len(newLogs) < len(prevLogs) {
+						fmt.Println("--- Logs restarted ---")
+					} else {
+						fmt.Println("--- Log stream gap detected ---")
+					}
 					fmt.Print(newLogs)
 				}
-				fmt.Println() // Add blank line before countdown
-				prevLogs = newLogs
 			}
+			fmt.Println() // Add blank line before countdown
+			prevLogs = newLogs
 		}
 	}
 }
