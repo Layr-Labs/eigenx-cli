@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Layr-Labs/eigenx-cli/pkg/commands/utils"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common/iface"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common/logger"
@@ -295,18 +296,34 @@ func loadEnvFile() error {
 	return godotenv.Load(EnvFile)
 }
 
+// getEnvironmentForMetrics returns the environment name for telemetry metrics
+// without heavy operations like RPC detection
+func getEnvironmentForMetrics(ctx *cli.Context) string {
+	if env := ctx.String(common.EnvironmentFlag.Name); env != "" {
+		return env
+	}
+	if env, _ := common.GetDefaultEnvironment(); env != "" {
+		return env
+	}
+	return common.FallbackEnvironment
+}
+
+// getDeployerForMetrics attempts to get the deployer address from private key if available
+func getDeployerForMetrics(ctx *cli.Context) string {
+	// Use the existing GetDeveloperAddress function which handles all sources
+	addr, err := utils.GetDeveloperAddress(ctx)
+	if err != nil {
+		return ""
+	}
+	return addr.Hex()
+}
+
 func WithCommandMetricsContext(ctx *cli.Context) error {
 	metrics := telemetry.NewMetricsContext()
 	ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
 
-	// Check for flagged environment
-	environment := ctx.String("environment")
-
-	// Check config for environment
-	if environment == "" {
-		// Default environment
-		environment = common.FallbackEnvironment
-	}
+	// Get environment name for metrics
+	environment := getEnvironmentForMetrics(ctx)
 
 	// Set environment in metrics
 	metrics.Properties["environment"] = environment
@@ -317,6 +334,11 @@ func WithCommandMetricsContext(ctx *cli.Context) error {
 		metrics.Properties["os"] = appEnv.OS
 		metrics.Properties["arch"] = appEnv.Arch
 		metrics.Properties["user_uuid"] = appEnv.UserUUID
+	}
+
+	// Collect deployer address if available
+	if deployer := getDeployerForMetrics(ctx); deployer != "" {
+		metrics.Properties["deployer_address"] = deployer
 	}
 
 	// Set flags in metrics
