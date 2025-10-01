@@ -12,11 +12,13 @@
 
 ### 1. Install
 
+**macOS/Linux:**
 ```bash
-# macOS/Linux
 curl -fsSL https://eigenx-scripts.s3.us-east-1.amazonaws.com/install-eigenx.sh | bash
+```
 
-# Windows
+**Windows:**
+```bash
 curl -fsSL https://eigenx-scripts.s3.us-east-1.amazonaws.com/install-eigenx.ps1 | powershell -
 ```
 
@@ -24,11 +26,13 @@ curl -fsSL https://eigenx-scripts.s3.us-east-1.amazonaws.com/install-eigenx.ps1 
 
 ### 2. Authenticate
 
+**Use an existing key:**
 ```bash
-# Use an existing key
 eigenx auth login
+```
 
-# Or generate a new key and store it
+**Or generate a new key:**
+```bash
 eigenx auth generate --store
 ```
 
