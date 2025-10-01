@@ -311,11 +311,8 @@ func WithCommandMetricsContext(ctx *cli.Context) error {
 	metrics := telemetry.NewMetricsContext()
 	ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
 
-	// Get environment name for metrics
-	environment := getEnvironmentForMetrics(ctx)
-
 	// Set environment in metrics
-	metrics.Properties["environment"] = environment
+	metrics.Properties["environment"] = getEnvironmentForMetrics(ctx)
 
 	// Set appEnv details in metrics
 	if appEnv, ok := common.AppEnvironmentFromContext(ctx.Context); ok {
