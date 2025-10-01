@@ -295,18 +295,24 @@ func loadEnvFile() error {
 	return godotenv.Load(EnvFile)
 }
 
+// getEnvironmentForMetrics returns the environment name for telemetry metrics
+// without heavy operations like RPC detection
+func getEnvironmentForMetrics(ctx *cli.Context) string {
+	if env := ctx.String(common.EnvironmentFlag.Name); env != "" {
+		return env
+	}
+	if env, _ := common.GetDefaultEnvironment(); env != "" {
+		return env
+	}
+	return common.FallbackEnvironment
+}
+
 func WithCommandMetricsContext(ctx *cli.Context) error {
 	metrics := telemetry.NewMetricsContext()
 	ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
 
-	// Check for flagged environment
-	environment := ctx.String("environment")
-
-	// Check config for environment
-	if environment == "" {
-		// Default environment
-		environment = common.FallbackEnvironment
-	}
+	// Get environment name for metrics
+	environment := getEnvironmentForMetrics(ctx)
 
 	// Set environment in metrics
 	metrics.Properties["environment"] = environment

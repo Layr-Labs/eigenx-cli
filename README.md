@@ -293,6 +293,7 @@ EigenX collects anonymous usage data to help us improve the CLI and understand h
 - Performance metrics (command execution times)
 - System information (OS, architecture)
 - Geographic location (country/city level only)
+- Deployment environment (e.g., sepolia, mainnet-alpha)
 
 ### What We DON'T Collect
 
