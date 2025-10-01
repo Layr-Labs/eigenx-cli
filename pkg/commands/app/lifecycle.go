@@ -75,7 +75,7 @@ func startAction(cCtx *cli.Context) error {
 
 	logger.Info("App %s started successfully", formattedApp)
 
-	return utils.GetAndPrintAppInfo(cCtx, appID, "Starting")
+	return utils.WatchUntilRunning(cCtx, appID, common.AppStatusResuming)
 }
 
 func stopAction(cCtx *cli.Context) error {
@@ -108,7 +108,7 @@ func stopAction(cCtx *cli.Context) error {
 
 	logger.Info("App %s stopped successfully", formattedApp)
 
-	return utils.GetAndPrintAppInfo(cCtx, appID, "Stopping")
+	return utils.GetAndPrintAppInfo(cCtx, appID, common.AppStatusStopping)
 }
 
 func terminateAction(cCtx *cli.Context) error {
@@ -139,5 +139,5 @@ func terminateAction(cCtx *cli.Context) error {
 
 	logger.Info("App %s terminated successfully", common.FormatAppDisplay(preflightCtx.EnvironmentConfig.Name, appID))
 
-	return utils.GetAndPrintAppInfo(cCtx, appID, "Terminating")
+	return utils.GetAndPrintAppInfo(cCtx, appID, common.AppStatusTerminating)
 }

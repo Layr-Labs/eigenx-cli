@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 )
 
@@ -416,4 +418,167 @@ func CheckAppLogPermission(cCtx *cli.Context, appAddress ethcommon.Address) (boo
 	}
 
 	return canCall, nil
+}
+
+// WatchAppInfoLoop is the shared watch logic for monitoring app status changes
+// stopCondition is called with (status, ip) and returns (shouldStop, error)
+// If stopCondition is nil, watches indefinitely
+// notifyOnStates: if provided, only print status changes when transitioning TO these states
+// statusOverride: if provided, overrides the initial status display for user clarity
+func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition func(string, string) (bool, error), notifyOnStates []string, statusOverride ...string) error {
+	logger := common.LoggerFromContext(cCtx)
+
+	// Display initial info (with optional status override)
+	if err := GetAndPrintAppInfo(cCtx, appID, statusOverride...); err != nil {
+		return err
+	}
+
+	// Track previous state for comparison
+	var prevStatus string
+	var prevIP string
+
+	userApiClient, err := NewUserApiClient(cCtx)
+	if err != nil {
+		return fmt.Errorf("failed to get userApi client: %w", err)
+	}
+
+	// Fetch initial state
+	info, err := userApiClient.GetInfos(cCtx, []ethcommon.Address{appID}, 1)
+	if err == nil && len(info.Apps) > 0 {
+		prevStatus = info.Apps[0].Status
+		prevIP = info.Apps[0].Ip
+	}
+
+	// Main watch loop
+	for {
+		// Show countdown
+		ShowCountdown(cCtx.Context, common.WatchPollIntervalSeconds)
+
+		select {
+		case <-cCtx.Context.Done():
+			fmt.Println("\nStopped watching")
+			return nil
+		default:
+			// Fetch fresh info
+			info, err := userApiClient.GetInfos(cCtx, []ethcommon.Address{appID}, 1)
+			if err != nil {
+				logger.Warn("Failed to fetch app info: %v", err)
+				continue
+			}
+
+			if len(info.Apps) == 0 {
+				continue
+			}
+
+			currentStatus := info.Apps[0].Status
+			currentIP := info.Apps[0].Ip
+
+			// Print status changes
+			if currentStatus != prevStatus {
+				// Check if we should notify about this status
+				shouldNotify := len(notifyOnStates) == 0 // If no filter, notify all
+				if !shouldNotify {
+					if slices.Contains(notifyOnStates, currentStatus) {
+						shouldNotify = true
+					}
+				}
+
+				if shouldNotify {
+					fmt.Print("\r\033[K") // Clear countdown line before printing
+					logger.Info("Status changed: %s → %s", prevStatus, currentStatus)
+				}
+				prevStatus = currentStatus
+			}
+
+			// Print IP assignment (only when transitioning from no IP to having an IP)
+			if currentIP != prevIP && currentIP != "" {
+				if prevIP == "" || prevIP == "No IP assigned" {
+					if currentStatus == prevStatus {
+						// Only clear if we didn't already clear for status change
+						fmt.Print("\r\033[K")
+					}
+					logger.Info("IP assigned: %s", currentIP)
+				}
+				prevIP = currentIP
+			}
+
+			// Check stop condition
+			if stopCondition != nil {
+				if shouldStop, err := stopCondition(currentStatus, currentIP); shouldStop {
+					return err
+				}
+			}
+		}
+	}
+}
+
+// WatchUntilRunning watches app info until it reaches Running status with an IP address
+// statusOverride: if provided, overrides the initial status display (e.g., "Deploying", "Upgrading")
+func WatchUntilRunning(cCtx *cli.Context, appID ethcommon.Address, statusOverride ...string) error {
+	logger := common.LoggerFromContext(cCtx)
+
+	// Track initial status and whether we've seen a change
+	var initialStatus string
+	var initialIP string
+	var hasChanged bool
+
+	// Stop condition: Running status with IP (but only after seeing a change if starting from Running)
+	stopCondition := func(status, ip string) (bool, error) {
+		// Capture initial state on first call
+		if initialStatus == "" {
+			initialStatus = status
+			initialIP = ip
+		}
+
+		// Track if status has changed from initial
+		if status != initialStatus {
+			hasChanged = true
+		}
+
+		// Exit on Running with IP, but only if:
+		// - We've seen a status change (handles upgrades), OR
+		// - Initial status was not Running (handles fresh deploys)
+		if status == common.AppStatusRunning && ip != "" {
+			if hasChanged || initialStatus != common.AppStatusRunning {
+				fmt.Print("\r                              \r")
+				fmt.Println()
+
+				// Only log IP if we didn't have one initially
+				if initialIP == "" || initialIP == "No IP assigned" {
+					logger.Info("App is now running with IP: %s", ip)
+				} else {
+					logger.Info("App is now running")
+				}
+				return true, nil
+			}
+		}
+
+		// Check for failure states
+		if status == common.AppStatusFailed {
+			fmt.Print("\r                              \r")
+			fmt.Println()
+			return true, fmt.Errorf("app entered %s state", status)
+		}
+		return false, nil
+	}
+
+	// Only notify on terminal states (Running or Failed)
+	notifyOnStates := []string{common.AppStatusRunning, common.AppStatusFailed}
+	return WatchAppInfoLoop(cCtx, appID, stopCondition, notifyOnStates, statusOverride...)
+}
+
+// ShowCountdown displays a countdown timer with gray text
+func ShowCountdown(ctx context.Context, seconds int) {
+	gray := color.New(color.FgHiBlack)
+
+	for i := seconds; i >= 0; i-- {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			fmt.Print("\r")
+			gray.Printf("Refreshing in %d...", i)
+			time.Sleep(time.Second)
+		}
+	}
 }

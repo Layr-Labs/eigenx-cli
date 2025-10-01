@@ -25,6 +25,9 @@ const (
 	// Docker open retry interval in milliseconds
 	DockerOpenRetryIntervalMilliseconds = 500
 
+	// WatchPollIntervalSeconds is the interval between watch loop polls in seconds
+	WatchPollIntervalSeconds = 5
+
 	// Environment variable names to filter out
 	MnemonicEnvVar = "MNEMONIC"
 )

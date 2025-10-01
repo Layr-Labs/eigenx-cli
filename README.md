@@ -82,11 +82,13 @@ The CLI will automatically prompt for the Dockerfile and .env paths if they're n
 ### **View Your App**
 
 ```bash
-# View app information
+# View app information and logs
 eigenx app info
-
-# View app logs
 eigenx app logs
+
+# Add --watch (or -w) to continuously poll for live updates
+eigenx app info --watch
+eigenx app logs --watch
 ```
 
 That's it! Your starter app is now running in a TEE with access to a MNEMONIC that only it can access.
@@ -245,6 +247,8 @@ ACME_FORCE_ISSUE=true  # Only if staging cert exists
 | `eigenx app list` | List all your deployed apps |
 | `eigenx app info [app-id\|name]` | Show detailed app information |
 | `eigenx app logs [app-id\|name]` | View application logs |
+
+**Watch Mode:** Add `--watch` (or `-w`) to `info` or `logs` commands to continuously poll for updates
 
 ### Deployment Environment Management
 
