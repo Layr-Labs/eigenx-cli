@@ -235,8 +235,6 @@ func watchLogs(cCtx *cli.Context, appID ethcommon.Address, userApiClient *utils.
 	prevLogs := initialLogs
 
 	for {
-		// Reset terminal formatting before countdown (in case logs contained ANSI codes)
-		fmt.Print("\033[0m")
 		utils.ShowCountdown(cCtx.Context, common.WatchPollIntervalSeconds)
 
 		select {
@@ -279,7 +277,9 @@ func watchLogs(cCtx *cli.Context, appID ethcommon.Address, userApiClient *utils.
 					fmt.Print(newLogs)
 				}
 			}
-			fmt.Println() // Add blank line before countdown
+			// Reset any incomplete formatting/special chars and add blank line
+			fmt.Print("\033[0m")
+			fmt.Println()
 			prevLogs = newLogs
 		}
 	}
