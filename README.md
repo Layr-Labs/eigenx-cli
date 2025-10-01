@@ -130,6 +130,13 @@ eigenx app terminate my-app  # Remove permanently
 
 MIT - See [LICENSE](LICENSE) file
 
----
+## Disclaimer
 
-**🚧 EigenX is in alpha** - Features may change, interfaces will evolve. Use for testing and development only. Provided "as is" without guarantee of functionality or production support.
+**🚧 eigenx-cli is in alpha, under active development, and has not been audited.**
+
+- Features may be added, removed, or modified
+- Interfaces will have breaking changes
+- Should be used **only for testing purposes** and **not in production**
+- Provided "as is" without guarantee of functionality or production support
+
+**Eigen Labs, Inc. does not provide support for production use.**
