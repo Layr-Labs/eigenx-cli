@@ -1,4 +1,4 @@
-# EigenX Architecture Guide
+# Architecture Guide
 
 ## Summary
 

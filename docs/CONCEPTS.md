@@ -1,4 +1,4 @@
-# EigenX Concepts Guide
+# Concepts Guide
 
 A comprehensive guide to understanding keys, environment variables, app lifecycle, and privacy in EigenX CLI.
 
