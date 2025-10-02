@@ -564,7 +564,7 @@ func (cc *ContractCaller) isMainnet() bool {
 func formatAppControllerError(parsedError any) error {
 	switch parsedError.(type) {
 	case *appcontrollerV2.AppControllerMaxActiveAppsExceeded:
-		return fmt.Errorf("not allowlisted or limit reached")
+		return fmt.Errorf("you have reached your app deployment limit. To request access or increase your limit, please visit https://onboarding.eigencloud.xyz/ or reach out to the Eigen team")
 	case *appcontrollerV2.AppControllerGlobalMaxActiveAppsExceeded:
 		return fmt.Errorf("the platform has reached the maximum number of active apps. please try again later")
 	case *appcontrollerV2.AppControllerInvalidPermissions:
