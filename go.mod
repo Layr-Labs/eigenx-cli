@@ -1,6 +1,6 @@
 module github.com/Layr-Labs/eigenx-cli
 
-go 1.24
+go 1.24.0
 
 toolchain go1.24.5
 
@@ -16,6 +16,7 @@ require (
 	github.com/posthog/posthog-go v1.4.10
 	github.com/urfave/cli/v2 v2.27.7
 	github.com/zalando/go-keyring v0.2.6
+	golang.org/x/mod v0.28.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

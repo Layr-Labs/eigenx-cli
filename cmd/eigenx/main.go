@@ -10,7 +10,6 @@ import (
 	"github.com/Layr-Labs/eigenx-cli/pkg/commands/version"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
 	"github.com/Layr-Labs/eigenx-cli/pkg/hooks"
-	"github.com/Layr-Labs/eigenx-cli/pkg/versioncheck"
 	"github.com/urfave/cli/v2"
 )
 
@@ -61,16 +60,8 @@ func main() {
 				}
 			}
 
-			// Check for updates (only for prod builds, skip for upgrade, version, and help commands)
-			if common.Build == "prod" && cCtx.Command.Name != "upgrade" && cCtx.Command.Name != "version" && cCtx.Command.Name != "help" {
-				// Run version check asynchronously to avoid blocking
-				go func() {
-					updateInfo, err := versioncheck.CheckForUpdate(logger)
-					if err == nil && updateInfo != nil && updateInfo.Available {
-						versioncheck.PrintUpdateNotification(updateInfo)
-					}
-				}()
-			}
+			// Check for updates
+			hooks.InitVersionCheck(cCtx)
 
 			return hooks.WithCommandMetricsContext(cCtx)
 		},
@@ -87,6 +78,7 @@ func main() {
 	}
 
 	actionChain := hooks.NewActionChain()
+	actionChain.Use(hooks.WithVersionCheck)
 	actionChain.Use(hooks.WithMetricEmission)
 
 	hooks.ApplyMiddleware(app.Commands, actionChain)
