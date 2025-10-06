@@ -1,0 +1,15 @@
+{
+  "name": "@layr-labs/eigenx-darwin-amd64",
+  "version": "0.0.0-development",
+  "description": "eigenx binary for macOS x64",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Layr-Labs/eigenx-cli.git"
+  },
+  "license": "MIT",
+  "os": ["darwin"],
+  "cpu": ["x64"],
+  "files": [
+    "bin/eigenx"
+  ]
+}

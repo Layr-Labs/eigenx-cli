@@ -1,0 +1,39 @@
+{
+  "name": "@layr-labs/eigenx",
+  "version": "0.0.0-development",
+  "description": "CLI toolkit for scaffolding, developing, and testing applications on EigenX",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Layr-Labs/eigenx-cli.git"
+  },
+  "license": "MIT",
+  "bin": {
+    "eigenx": "run.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "optionalDependencies": {
+    "@layr-labs/eigenx-darwin-amd64": "0.0.0-development",
+    "@layr-labs/eigenx-darwin-arm64": "0.0.0-development",
+    "@layr-labs/eigenx-linux-amd64": "0.0.0-development",
+    "@layr-labs/eigenx-linux-arm64": "0.0.0-development",
+    "@layr-labs/eigenx-windows-amd64": "0.0.0-development",
+    "@layr-labs/eigenx-windows-arm64": "0.0.0-development"
+  },
+  "files": [
+    "install.js",
+    "run.js",
+    "README.md"
+  ],
+  "keywords": [
+    "eigenx",
+    "cli",
+    "tee",
+    "docker",
+    "blockchain"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

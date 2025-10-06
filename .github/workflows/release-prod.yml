@@ -168,10 +168,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Uploading built artifacts to GitHub release..."
-          
+
           echo "Upload URL: ${{ steps.create_release.outputs.upload_url }}"
           export upload_url=$(echo "${{ steps.create_release.outputs.upload_url }}" | sed -e "s/{?name,label}//")
-      
+
           for asset_name in $(ls ./release | grep -E '\.(tar\.gz|zip)$');
           do
             asset="./release/${asset_name}"
@@ -183,12 +183,32 @@ jobs:
               "${upload_url}?name=$asset_name"
           done
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Prepare npm packages
+        run: |
+          echo "Preparing npm packages for version $VERSION..."
+          VERSION=$VERSION make npm-prepare
+
+      - name: Publish to npm (latest tag)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "Publishing to npm with 'latest' tag..."
+          make npm-publish-prod
+
       - name: Summary
         run: |
           echo "🚀 Production release $VERSION deployed successfully!"
           echo "📦 Built fresh production binary with clean version"
           echo "🔒 Verified dev testing completed with matching commit"
+          echo "📦 npm packages published with tag 'latest'"
           echo "🔗 Users can install with: curl -sSL install-script | bash"
+          echo "🔗 Or via npm: npm install -g @layr-labs/eigenx"
           echo "📋 GitHub release: https://github.com/${{ github.repository }}/releases/tag/$VERSION"
 
   smoke-test-binaries:
