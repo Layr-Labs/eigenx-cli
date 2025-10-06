@@ -18,6 +18,10 @@ type GlobalConfig struct {
 	UserUUID string `yaml:"user_uuid"`
 	// DefaultEnvironment stores the user's preferred deployment environment (sepolia, mainnet-alpha, etc.)
 	DefaultEnvironment string `yaml:"default_environment,omitempty"`
+	// LastVersionCheck stores the timestamp of the last version check
+	LastVersionCheck int64 `yaml:"last_version_check,omitempty"`
+	// LastKnownVersion stores the last known latest version from the server
+	LastKnownVersion string `yaml:"last_known_version,omitempty"`
 }
 
 // GetGlobalConfigDir returns the XDG-compliant directory where global eigenx config should be stored
