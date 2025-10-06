@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Layr-Labs/eigenx-cli/internal/version"
-	"github.com/Layr-Labs/eigenx-cli/pkg/commands"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common/iface"
 )
@@ -57,7 +56,7 @@ func CheckForUpdate(logger iface.Logger) (*UpdateInfo, error) {
 
 	// Perform fresh check
 	logger.Debug("Performing fresh version check...")
-	latestVersion, err := commands.GetLatestVersionFromS3("latest")
+	latestVersion, err := common.GetLatestVersionFromS3("latest")
 	if err != nil {
 		logger.Debug("Failed to fetch latest version: %v", err)
 		// Return cached result if available, otherwise no update
