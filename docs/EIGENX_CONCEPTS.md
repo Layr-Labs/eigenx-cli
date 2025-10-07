@@ -85,7 +85,11 @@ EigenX CLI encrypts your sensitive configuration during deployment using [KMS](h
 * **Standard `.env` variables** are encrypted and decryptable exclusively within your TEE
 * **`_PUBLIC` suffixed variables** are transparent and visible to users for configuration transparency
 
-The [KMS](https://github.com/Layr-Labs/eigenx-kms/blob/master/kms.md) encryption ensures that no third party, platform operator, or other application can access your environment variables. Decryption is cryptographically restricted to your specific TEE instance. Your application must handle these values responsibly and never log or exfiltrate sensitive data.
+**Current Security Model (Mainnet Alpha):** Platform operators have access to KMS signing and decryption keys, meaning they can theoretically access encrypted environment variables. This access is necessary for current operations but will be migrated to a hardened external system.
+
+**Future Security Model:** A new set of keys will be generated and moved to an external hardened system. This will enable encryption/decryption and key derivation without platform operator access. Additionally, KMS upgrades will require onchain authorization.
+
+Decryption is cryptographically restricted to your specific TEE instance and authorized parties. Your application must handle these values responsibly and never log or exfiltrate sensitive data.
 
 ---
 
@@ -200,9 +204,9 @@ EigenX CLI provides strong privacy guarantees through TEE isolation and encrypti
 | Guarantee             | Details                                                                       |
 | --------------------- | ----------------------------------------------------------------------------- |
 | **Code Isolation**    | Your application code executes in hardware-enforced isolation                |
-| **Data Encryption**   | All sensitive data encrypted at rest and only decryptable within TEE         |
-| **Attestation-Based**| [KMS](https://github.com/Layr-Labs/eigenx-kms/blob/master/kms.md) only releases secrets to verified TEE instances via cryptographic [attestation](https://docs.trustauthority.intel.com/main/articles/articles/ita/concept-attestation-overview.html) proof  |
-| **No Admin Access**  | Platform operators cannot access your TEE's internal state or memory         |
+| **Data Encryption**   | All sensitive data encrypted at rest and decryptable within TEE. In the Mainnet Alpha, platform operators have KMS key access. Future releases will use a hardened external system with onchain-authorized upgrades.         |
+| **Attestation-Based**| [KMS](https://github.com/Layr-Labs/eigenx-kms/blob/master/kms.md) releases secrets to verified TEE instances via cryptographic [attestation](https://docs.trustauthority.intel.com/main/articles/articles/ita/concept-attestation-overview.html) proof  |
+| **Limited Admin Access**  | Platform operators cannot access your TEE's internal state or memory. However, in the Mainnet Alpha they have access to KMS keys for encryption/decryption operations.         |
 
 ## Privacy Distinctions
 
@@ -240,10 +244,10 @@ EigenX CLI provides strong privacy guarantees through TEE isolation and encrypti
 
 | Attack Vector | Protection |
 | ------------- | ---------- |
-| **Malicious Cloud Providers** | Platform operators cannot access your TEE memory, secrets, or runtime data |
+| **Malicious Cloud Providers** | Platform operators cannot access your TEE memory or runtime data. However, in the current Mainnet Alpha, platform operators have access to KMS keys and can theoretically decrypt environment variables. This will be addressed in future releases with a hardened external KMS system. |
 | **Infrastructure Compromise** | Even if host machines are compromised, TEE hardware isolation prevents secret extraction |
 | **Man-in-the-Middle Attacks** | Encrypted secrets can only be decrypted inside verified TEE instances via [attestation](https://docs.trustauthority.intel.com/main/articles/articles/ita/concept-attestation-overview.html) |
-| **Secret Exfiltration by Operators** | [KMS](https://github.com/Layr-Labs/eigenx-kms/blob/master/kms.md) cryptographically binds secrets to your specific TEE - not accessible to anyone else |
+| **Secret Exfiltration by Operators** | [KMS](https://github.com/Layr-Labs/eigenx-kms/blob/master/kms.md) cryptographically binds secrets to your specific TEE. In the Mainnet Alpha, platform operators have KMS key access. Future releases will eliminate this access through an external hardened system. |
 | **Credential Theft from Storage** | Secrets stored encrypted on-chain and in KMS, never in plaintext outside your TEE |
 | **Supply Chain Attacks on Infrastructure** | [Attestation](https://docs.trustauthority.intel.com/main/articles/articles/ita/concept-attestation-overview.html) ensures only genuine TEE hardware with verified measurements can decrypt secrets |
 
