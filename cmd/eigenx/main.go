@@ -60,6 +60,9 @@ func main() {
 				}
 			}
 
+			// Check for updates
+			hooks.InitVersionCheck(cCtx)
+
 			return hooks.WithCommandMetricsContext(cCtx)
 		},
 		Commands: []*cli.Command{
@@ -75,6 +78,7 @@ func main() {
 	}
 
 	actionChain := hooks.NewActionChain()
+	actionChain.Use(hooks.WithVersionCheck)
 	actionChain.Use(hooks.WithMetricEmission)
 
 	hooks.ApplyMiddleware(app.Commands, actionChain)

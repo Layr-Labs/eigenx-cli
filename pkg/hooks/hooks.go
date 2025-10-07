@@ -237,6 +237,48 @@ func WithMetricEmission(action cli.ActionFunc) cli.ActionFunc {
 	}
 }
 
+// versionCheckChannel is a package-level channel for async version check results
+var versionCheckChannel = make(chan *common.UpdateInfo, 1)
+
+// InitVersionCheck starts an async version check for prod builds
+func InitVersionCheck(cCtx *cli.Context) {
+	// Skip for non-prod builds or specific commands
+	if common.Build != "prod" || cCtx.Command.Name == "upgrade" || cCtx.Command.Name == "version" || cCtx.Command.Name == "help" {
+		return
+	}
+
+	logger := common.LoggerFromContext(cCtx)
+
+	// Run version check asynchronously to avoid blocking command startup
+	go func() {
+		updateInfo, err := common.CheckForUpdate(logger)
+		if err == nil && updateInfo.Available {
+			versionCheckChannel <- updateInfo
+		}
+	}()
+}
+
+func WithVersionCheck(action cli.ActionFunc) cli.ActionFunc {
+	return func(ctx *cli.Context) error {
+		// Run command action first
+		err := action(ctx)
+
+		// After command completes, check if version update is available
+		if versionCheckChannel != nil {
+			select {
+			case updateInfo := <-versionCheckChannel:
+				if updateInfo != nil && updateInfo.Available {
+					common.PrintUpdateNotification(updateInfo)
+				}
+			default:
+				// Version check not done yet, skip notification
+			}
+		}
+
+		return err
+	}
+}
+
 func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
 	metrics, err := telemetry.MetricsFromContext(ctx.Context)
 	if err != nil {
