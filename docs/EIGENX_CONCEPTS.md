@@ -85,7 +85,7 @@ EigenX CLI encrypts your sensitive configuration during deployment using [KMS](h
 * **Standard `.env` variables** are encrypted and decryptable exclusively within your TEE
 * **`_PUBLIC` suffixed variables** are transparent and visible to users for configuration transparency
 
-**Current Security Model (Mainnet Alpha):** Platform operators have access to KMS signing and decryption keys, meaning they can theoretically access encrypted environment variables. This access is necessary for current operations but will be migrated to a hardened external system.
+**Current Security Model (Mainnet Alpha):** Platform operators have access to [KMS](https://github.com/Layr-Labs/eigenx-kms/blob/master/kms.md) signing and decryption keys, meaning they can theoretically access encrypted environment variables. This access is necessary for current operations but will be migrated to a hardened external system.
 
 **Future Security Model:** A new set of keys will be generated and moved to an external hardened system. This will enable encryption/decryption and key derivation without platform operator access. Additionally, KMS upgrades will require onchain authorization.
 
