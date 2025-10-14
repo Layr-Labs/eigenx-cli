@@ -816,7 +816,7 @@ func GetLogSettingsInteractive(cCtx *cli.Context) (logRedirect string, publicLog
 
 	// Interactive prompt with three options
 	options := []string{
-		"Yes, but only viewable by me",
+		"Yes, but only viewable by app and platform admins",
 		"Yes, publicly viewable by anyone",
 		"No, disable logs entirely",
 	}
@@ -827,7 +827,7 @@ func GetLogSettingsInteractive(cCtx *cli.Context) (logRedirect string, publicLog
 	}
 
 	switch choice {
-	case "Yes, but only viewable by me":
+	case "Yes, but only viewable by app and platform admins":
 		return "always", false, nil
 	case "Yes, publicly viewable by anyone":
 		return "always", true, nil
