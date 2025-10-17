@@ -90,8 +90,28 @@ jobs:
           echo "$VERSION" > VERSION_DEV
           aws s3 cp VERSION_DEV "s3://eigenlayer-eigenx-releases-dev/VERSION" --content-type "text/plain"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Prepare npm packages
+        run: |
+          echo "Preparing npm packages for version $VERSION..."
+          VERSION=$VERSION make npm-prepare
+
+      - name: Publish to npm (dev tag)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "Publishing to npm with 'dev' tag..."
+          make npm-publish-dev
+
       - name: Summary
         run: |
           echo "✅ Dev release $VERSION deployed successfully!"
           echo "📦 Artifacts uploaded to: s3://eigenlayer-eigenx-releases-dev/$VERSION/"
+          echo "📦 npm packages published with tag 'dev'"
           echo "🔗 Install with: curl -sSL install-script | bash -s -- --dev"
+          echo "🔗 Or via npm: npm install -g @layr-labs/eigenx@dev"

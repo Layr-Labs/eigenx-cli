@@ -76,3 +76,52 @@ release:
 	$(MAKE) build/linux-amd64
 	$(MAKE) build/windows-amd64
 	$(MAKE) build/windows-arm64
+
+.PHONY: npm-prepare
+npm-prepare: ## Prepare npm packages with binaries (run after 'make release')
+	@echo "Copying binaries to npm packages..."
+	@mkdir -p npm/eigenx-darwin-arm64/bin
+	@mkdir -p npm/eigenx-darwin-amd64/bin
+	@mkdir -p npm/eigenx-linux-arm64/bin
+	@mkdir -p npm/eigenx-linux-amd64/bin
+	@mkdir -p npm/eigenx-windows-amd64/bin
+	@mkdir -p npm/eigenx-windows-arm64/bin
+	@cp release/darwin-arm64/eigenx npm/eigenx-darwin-arm64/bin/
+	@cp release/darwin-amd64/eigenx npm/eigenx-darwin-amd64/bin/
+	@cp release/linux-arm64/eigenx npm/eigenx-linux-arm64/bin/
+	@cp release/linux-amd64/eigenx npm/eigenx-linux-amd64/bin/
+	@cp release/windows-amd64/eigenx.exe npm/eigenx-windows-amd64/bin/
+	@cp release/windows-arm64/eigenx.exe npm/eigenx-windows-arm64/bin/
+	@echo "Updating package.json versions to $(VERSION)..."
+	@command -v jq >/dev/null 2>&1 || { echo "Error: jq is required but not installed"; exit 1; }
+	@for pkg in npm/eigenx npm/eigenx-darwin-arm64 npm/eigenx-darwin-amd64 npm/eigenx-linux-arm64 npm/eigenx-linux-amd64 npm/eigenx-windows-amd64 npm/eigenx-windows-arm64; do \
+		jq '.version = "$(VERSION)"' $$pkg/package.json > $$pkg/package.json.tmp && mv $$pkg/package.json.tmp $$pkg/package.json; \
+	done
+	@jq '.optionalDependencies = (.optionalDependencies | to_entries | map(.value = "$(VERSION)") | from_entries)' npm/eigenx/package.json > npm/eigenx/package.json.tmp && mv npm/eigenx/package.json.tmp npm/eigenx/package.json
+	@echo "✓ npm packages prepared successfully"
+
+.PHONY: npm-publish-prod
+npm-publish-prod: ## Publish npm packages to production (latest tag)
+	@echo "Publishing platform-specific packages to npm with 'latest' tag..."
+	@cd npm/eigenx-darwin-arm64 && npm publish --access public --tag latest
+	@cd npm/eigenx-darwin-amd64 && npm publish --access public --tag latest
+	@cd npm/eigenx-linux-arm64 && npm publish --access public --tag latest
+	@cd npm/eigenx-linux-amd64 && npm publish --access public --tag latest
+	@cd npm/eigenx-windows-amd64 && npm publish --access public --tag latest
+	@cd npm/eigenx-windows-arm64 && npm publish --access public --tag latest
+	@echo "Publishing main package to npm with 'latest' tag..."
+	@cd npm/eigenx && npm publish --access public --tag latest
+	@echo "✓ All packages published to npm as 'latest'"
+
+.PHONY: npm-publish-dev
+npm-publish-dev: ## Publish npm packages to dev (dev tag)
+	@echo "Publishing platform-specific packages to npm with 'dev' tag..."
+	@cd npm/eigenx-darwin-arm64 && npm publish --access public --tag dev
+	@cd npm/eigenx-darwin-amd64 && npm publish --access public --tag dev
+	@cd npm/eigenx-linux-arm64 && npm publish --access public --tag dev
+	@cd npm/eigenx-linux-amd64 && npm publish --access public --tag dev
+	@cd npm/eigenx-windows-amd64 && npm publish --access public --tag dev
+	@cd npm/eigenx-windows-arm64 && npm publish --access public --tag dev
+	@echo "Publishing main package to npm with 'dev' tag..."
+	@cd npm/eigenx && npm publish --access public --tag dev
+	@echo "✓ All packages published to npm as 'dev'"
