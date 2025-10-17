@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Layr-Labs/eigenx-cli/pkg/commands/utils"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common/iface"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common/logger"
@@ -362,6 +363,12 @@ func WithCommandMetricsContext(ctx *cli.Context) error {
 		metrics.Properties["os"] = appEnv.OS
 		metrics.Properties["arch"] = appEnv.Arch
 		metrics.Properties["user_uuid"] = appEnv.UserUUID
+	}
+
+	// Set user address in metrics if available
+	address, err := utils.GetDeveloperAddress(ctx)
+	if err == nil {
+		metrics.Properties["user_address"] = address.Hex()
 	}
 
 	// Set flags in metrics

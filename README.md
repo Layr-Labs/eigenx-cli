@@ -296,8 +296,8 @@ EigenX collects anonymous usage data to help us improve the CLI and understand h
 - Error counts and types to identify common issues
 - Performance metrics (command execution times)
 - System information (OS, architecture)
-- Geographic location (country/city level only)
 - Deployment environment (e.g., sepolia, mainnet-alpha)
+- User Ethereum address
 
 ### What We DON'T Collect
 
