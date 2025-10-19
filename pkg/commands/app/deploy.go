@@ -22,6 +22,7 @@ var DeployCommand = &cli.Command{
 		common.FileFlag,
 		common.NameFlag,
 		common.LogVisibilityFlag,
+		common.InstanceTypeFlag,
 	}...),
 	Action: deployAction,
 }
@@ -67,20 +68,30 @@ func deployAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get env file path: %w", err)
 	}
 
-	// 7. Get log settings from flags or interactive prompt
+	// 7. Get instance type and configure env file
+	instanceType, err := utils.GetInstanceTypeInteractive(cCtx)
+	if err != nil {
+		return fmt.Errorf("failed to get instance type: %w", err)
+	}
+	envFilePath, err = utils.ConfigureInstanceType(cCtx, envFilePath, instanceType)
+	if err != nil {
+		return err
+	}
+
+	// 8. Get log settings from flags or interactive prompt
 	logRedirect, publicLogs, err := utils.GetLogSettingsInteractive(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to get log settings: %w", err)
 	}
 
-	// 8. Generate random salt
+	// 9. Generate random salt
 	salt := [32]byte{}
 	_, err = rand.Read(salt[:])
 	if err != nil {
 		return fmt.Errorf("failed to generate random salt: %w", err)
 	}
 
-	// 9. Get app ID
+	// 10. Get app ID
 	_, appController, err := utils.GetAppControllerBinding(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to get app controller binding: %w", err)
@@ -90,25 +101,25 @@ func deployAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get app id: %w", err)
 	}
 
-	// 10. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
+	// 11. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
 	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appIDToBeDeployed, dockerfilePath, imageRef, envFilePath, logRedirect, 3)
 	if err != nil {
 		return err
 	}
 
-	// 11. Deploy the app
+	// 12. Deploy the app
 	appID, err := preflightCtx.Caller.DeployApp(cCtx.Context, salt, release, publicLogs, imageRef)
 	if err != nil {
 		return fmt.Errorf("failed to deploy app: %w", err)
 	}
 
-	// 12. Save the app name mapping
+	// 13. Save the app name mapping
 	if err := common.SetAppName(environment, appID.Hex(), name); err != nil {
 		logger.Warn("Failed to save app name: %s", err.Error())
 	} else {
 		logger.Info("App saved with name: %s", name)
 	}
 
-	// 13. Watch until app is running
+	// 14. Watch until app is running
 	return utils.WatchUntilRunning(cCtx, appID, common.AppStatusDeploying)
 }

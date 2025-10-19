@@ -30,6 +30,9 @@ const (
 
 	// Environment variable names to filter out
 	MnemonicEnvVar = "MNEMONIC"
+
+	// DefaultEnvFileName is the default name for environment files
+	DefaultEnvFileName = ".env"
 )
 
 // API permissions constants

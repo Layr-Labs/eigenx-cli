@@ -74,6 +74,11 @@ var (
 		Usage: "Log visibility setting: public, private, or off",
 	}
 
+	InstanceTypeFlag = &cli.StringFlag{
+		Name:  "instance-type",
+		Usage: "Machine instance type to use (g1-standard-4t, g1-standard-8t)",
+	}
+
 	WatchFlag = &cli.BoolFlag{
 		Name:    "watch",
 		Aliases: []string{"w"},

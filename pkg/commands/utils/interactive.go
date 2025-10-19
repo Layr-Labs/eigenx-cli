@@ -838,6 +838,54 @@ func GetLogSettingsInteractive(cCtx *cli.Context) (logRedirect string, publicLog
 	}
 }
 
+// GetInstanceTypeInteractive prompts for instance type if not provided via flag
+func GetInstanceTypeInteractive(cCtx *cli.Context) (string, error) {
+	// Check if flag is provided
+	if instanceTypeFlag := cCtx.String(common.InstanceTypeFlag.Name); instanceTypeFlag != "" {
+		if !common.ValidateInstanceType(instanceTypeFlag) {
+			return "", fmt.Errorf("invalid --instance-type value: %s (must be one of: %s)",
+				instanceTypeFlag, getValidInstanceTypeValues())
+		}
+		return instanceTypeFlag, nil
+	}
+
+	// Interactive prompt with available instance types
+	fmt.Println("\nSelect machine instance type:")
+	availableTypes := common.GetAvailableInstanceTypes()
+
+	// Build options and create lookup map
+	options := make([]string, len(availableTypes))
+	optionToValue := make(map[string]string, len(availableTypes))
+	for i, it := range availableTypes {
+		option := fmt.Sprintf("%s - %s", it.Name, it.Description)
+		options[i] = option
+		optionToValue[option] = it.Value
+	}
+
+	choice, err := output.SelectString("Choose instance type:", options)
+	if err != nil {
+		return "", fmt.Errorf("failed to select instance type: %w", err)
+	}
+
+	// Lookup selected value
+	if value, ok := optionToValue[choice]; ok {
+		return value, nil
+	}
+
+	// This should never happen, but return default as safety net
+	return common.GetDefaultInstanceType().Value, nil
+}
+
+// getValidInstanceTypeValues returns a comma-separated string of valid instance type values
+func getValidInstanceTypeValues() string {
+	availableTypes := common.GetAvailableInstanceTypes()
+	values := make([]string, len(availableTypes))
+	for i, it := range availableTypes {
+		values[i] = it.Value
+	}
+	return strings.Join(values, ", ")
+}
+
 // GetEnvironmentInteractive gets environment from args or interactive selection
 func GetEnvironmentInteractive(cCtx *cli.Context, argIndex int) (string, error) {
 	// Check if provided as argument

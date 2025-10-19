@@ -19,6 +19,7 @@ var UpgradeCommand = &cli.Command{
 		common.EnvFlag,
 		common.FileFlag,
 		common.LogVisibilityFlag,
+		common.InstanceTypeFlag,
 	}...),
 	Action: upgradeAction,
 }
@@ -61,19 +62,29 @@ func upgradeAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get env file path: %w", err)
 	}
 
-	// 7. Get log settings from flags or interactive prompt
+	// 7. Get instance type and configure env file
+	instanceType, err := utils.GetInstanceTypeInteractive(cCtx)
+	if err != nil {
+		return fmt.Errorf("failed to get instance type: %w", err)
+	}
+	envFilePath, err = utils.ConfigureInstanceType(cCtx, envFilePath, instanceType)
+	if err != nil {
+		return err
+	}
+
+	// 8. Get log settings from flags or interactive prompt
 	logRedirect, publicLogs, err := utils.GetLogSettingsInteractive(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to get log settings: %w", err)
 	}
 
-	// 8. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
+	// 9. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
 	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appID, dockerfilePath, imageRef, envFilePath, logRedirect, 3)
 	if err != nil {
 		return err
 	}
 
-	// 9. Check current permission state and determine if change is needed
+	// 10. Check current permission state and determine if change is needed
 	currentlyPublic, err := utils.CheckAppLogPermission(cCtx, appID)
 	if err != nil {
 		return fmt.Errorf("failed to check current permission state: %w", err)
@@ -81,12 +92,12 @@ func upgradeAction(cCtx *cli.Context) error {
 
 	needsPermissionChange := currentlyPublic != publicLogs
 
-	// 10. Upgrade the app
+	// 11. Upgrade the app
 	err = preflightCtx.Caller.UpgradeApp(cCtx.Context, appID, release, publicLogs, needsPermissionChange, imageRef)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade app: %w", err)
 	}
 
-	// 11. Watch until app is running
+	// 12. Watch until app is running
 	return utils.WatchUntilRunning(cCtx, appID, common.AppStatusUpgrading)
 }
