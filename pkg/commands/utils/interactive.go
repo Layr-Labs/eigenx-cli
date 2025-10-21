@@ -838,28 +838,93 @@ func GetLogSettingsInteractive(cCtx *cli.Context) (logRedirect string, publicLog
 	}
 }
 
-// GetInstanceTypeInteractive prompts for instance type if not provided via flag
-func GetInstanceTypeInteractive(cCtx *cli.Context) (string, error) {
-	// Check if flag is provided
-	if instanceTypeFlag := cCtx.String(common.InstanceTypeFlag.Name); instanceTypeFlag != "" {
-		if !common.ValidateInstanceType(instanceTypeFlag) {
-			return "", fmt.Errorf("invalid --instance-type value: %s (must be one of: %s)",
-				instanceTypeFlag, getValidInstanceTypeValues())
-		}
-		return instanceTypeFlag, nil
+// GetInstanceTypeInteractive prompts for instance type if not provided via flag.
+// The defaultSKU parameter is used as the default selection in interactive mode:
+// - For new deployments: pass empty string (uses first SKU from backend)
+// - For upgrades: pass current app's instance type
+func GetInstanceTypeInteractive(cCtx *cli.Context, defaultSKU string) (string, error) {
+	// Fetch available SKUs from backend
+	availableTypes, err := fetchAvailableInstanceTypes(cCtx)
+	if err != nil {
+		return "", err
 	}
 
-	// Interactive prompt with available instance types
-	fmt.Println("\nSelect machine instance type:")
-	availableTypes := common.GetAvailableInstanceTypes()
+	// Check if flag is provided and validate it
+	if instanceTypeSKU := cCtx.String(common.InstanceTypeFlag.Name); instanceTypeSKU != "" {
+		return validateInstanceTypeSKU(instanceTypeSKU, availableTypes)
+	}
 
-	// Build options and create lookup map
-	options := make([]string, len(availableTypes))
-	optionToValue := make(map[string]string, len(availableTypes))
+	// Determine default SKU if not provided
+	if defaultSKU == "" && len(availableTypes) > 0 {
+		defaultSKU = availableTypes[0].SKU // Use first from backend as default
+	}
+
+	// No flag provided - show interactive prompt
+	return selectInstanceTypeInteractively(availableTypes, defaultSKU)
+}
+
+// fetchAvailableInstanceTypes retrieves the list of available instance types from the backend
+func fetchAvailableInstanceTypes(cCtx *cli.Context) ([]InstanceType, error) {
+	userApiClient, err := NewUserApiClient(cCtx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API client: %w", err)
+	}
+
+	skuList, err := userApiClient.GetSKUs(cCtx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch available instance types: %w", err)
+	}
+
+	if len(skuList.SKUs) == 0 {
+		return nil, fmt.Errorf("no instance types available from server")
+	}
+
+	return skuList.SKUs, nil
+}
+
+// validateInstanceTypeSKU validates a user-provided instance type SKU against available types
+func validateInstanceTypeSKU(sku string, availableTypes []InstanceType) (string, error) {
+	// Check if SKU is valid
+	for _, it := range availableTypes {
+		if it.SKU == sku {
+			return sku, nil
+		}
+	}
+
+	// Build helpful error message with valid options
+	validSKUs := make([]string, len(availableTypes))
 	for i, it := range availableTypes {
-		option := fmt.Sprintf("%s - %s", it.Name, it.Description)
+		validSKUs[i] = it.SKU
+	}
+	return "", fmt.Errorf("invalid --instance-type value: %s (must be one of: %s)",
+		sku, strings.Join(validSKUs, ", "))
+}
+
+// selectInstanceTypeInteractively prompts user to select from available instance types.
+// The defaultSKU parameter is highlighted as the recommended option.
+func selectInstanceTypeInteractively(availableTypes []InstanceType, defaultSKU string) (string, error) {
+	// Find default in available types to show in message
+	defaultDesc := ""
+	for _, it := range availableTypes {
+		if it.SKU == defaultSKU {
+			defaultDesc = fmt.Sprintf(" (current: %s)", it.SKU)
+			break
+		}
+	}
+
+	fmt.Printf("\nSelect machine instance type%s:\n", defaultDesc)
+
+	// Build options and create lookup map in a single pass
+	options := make([]string, len(availableTypes))
+	optionToSKU := make(map[string]string, len(availableTypes))
+	for i, it := range availableTypes {
+		option := fmt.Sprintf("%s - %s", it.SKU, it.Description)
+		// Mark the default option
+		if it.SKU == defaultSKU {
+			option += " (current)"
+		}
 		options[i] = option
-		optionToValue[option] = it.Value
+		optionToSKU[option] = it.SKU
 	}
 
 	choice, err := output.SelectString("Choose instance type:", options)
@@ -867,23 +932,8 @@ func GetInstanceTypeInteractive(cCtx *cli.Context) (string, error) {
 		return "", fmt.Errorf("failed to select instance type: %w", err)
 	}
 
-	// Lookup selected value
-	if value, ok := optionToValue[choice]; ok {
-		return value, nil
-	}
-
-	// This should never happen, but return default as safety net
-	return common.GetDefaultInstanceType().Value, nil
-}
-
-// getValidInstanceTypeValues returns a comma-separated string of valid instance type values
-func getValidInstanceTypeValues() string {
-	availableTypes := common.GetAvailableInstanceTypes()
-	values := make([]string, len(availableTypes))
-	for i, it := range availableTypes {
-		values[i] = it.Value
-	}
-	return strings.Join(values, ", ")
+	// Return the selected SKU
+	return optionToSKU[choice], nil
 }
 
 // GetEnvironmentInteractive gets environment from args or interactive selection

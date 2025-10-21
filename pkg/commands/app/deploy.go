@@ -68,8 +68,8 @@ func deployAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get env file path: %w", err)
 	}
 
-	// 7. Get instance type selection
-	instanceType, err := utils.GetInstanceTypeInteractive(cCtx)
+	// 7. Get instance type selection (uses first from backend as default for new apps)
+	instanceType, err := utils.GetInstanceTypeInteractive(cCtx, "")
 	if err != nil {
 		return fmt.Errorf("failed to get instance type: %w", err)
 	}

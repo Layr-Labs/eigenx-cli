@@ -28,8 +28,9 @@ const (
 	// WatchPollIntervalSeconds is the interval between watch loop polls in seconds
 	WatchPollIntervalSeconds = 5
 
-	// Environment variable names to filter out
-	MnemonicEnvVar = "MNEMONIC"
+	// Environment variable names
+	MnemonicEnvVar             = "MNEMONIC"                   // Filtered out, overridden by protocol
+	EigenMachineTypeEnvVar     = "EIGEN_MACHINE_TYPE_PUBLIC" // Instance type configuration
 
 	// DefaultEnvFileName is the default name for environment files
 	DefaultEnvFileName = ".env"

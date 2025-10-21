@@ -5,6 +5,7 @@ import (
 
 	"github.com/Layr-Labs/eigenx-cli/pkg/commands/utils"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli/v2"
 )
 
@@ -62,25 +63,34 @@ func upgradeAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get env file path: %w", err)
 	}
 
-	// 7. Get instance type selection
-	instanceType, err := utils.GetInstanceTypeInteractive(cCtx)
+	// 7. Fetch current app info to determine default instance type
+	currentInstanceType := ""
+	userApiClient, err := utils.NewUserApiClient(cCtx)
+	if err == nil {
+		if infos, err := userApiClient.GetInfos(cCtx, []ethcommon.Address{appID}, 1); err == nil && len(infos.Apps) > 0 {
+			currentInstanceType = infos.Apps[0].MachineType
+		}
+	}
+
+	// 8. Get instance type selection (defaults to current app's instance type)
+	instanceType, err := utils.GetInstanceTypeInteractive(cCtx, currentInstanceType)
 	if err != nil {
 		return fmt.Errorf("failed to get instance type: %w", err)
 	}
 
-	// 8. Get log settings from flags or interactive prompt
+	// 9. Get log settings from flags or interactive prompt
 	logRedirect, publicLogs, err := utils.GetLogSettingsInteractive(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to get log settings: %w", err)
 	}
 
-	// 9. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
+	// 10. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
 	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appID, dockerfilePath, imageRef, envFilePath, logRedirect, instanceType, 3)
 	if err != nil {
 		return err
 	}
 
-	// 10. Check current permission state and determine if change is needed
+	// 11. Check current permission state and determine if change is needed
 	currentlyPublic, err := utils.CheckAppLogPermission(cCtx, appID)
 	if err != nil {
 		return fmt.Errorf("failed to check current permission state: %w", err)
@@ -88,12 +98,12 @@ func upgradeAction(cCtx *cli.Context) error {
 
 	needsPermissionChange := currentlyPublic != publicLogs
 
-	// 11. Upgrade the app
+	// 12. Upgrade the app
 	err = preflightCtx.Caller.UpgradeApp(cCtx.Context, appID, release, publicLogs, needsPermissionChange, imageRef)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade app: %w", err)
 	}
 
-	// 12. Watch until app is running
+	// 13. Watch until app is running
 	return utils.WatchUntilRunning(cCtx, appID, common.AppStatusUpgrading)
 }

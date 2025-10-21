@@ -265,6 +265,7 @@ func PrintAppInfoWithStatus(ctx context.Context, logger iface.Logger, client *et
 	// Compare contract and API status to show transition states when they differ
 	status := getDisplayStatus(config.Status, info.Status, statusOverride)
 	logger.Info("Status: %s", status)
+	logger.Info("Instance Type: %s", info.MachineType)
 	logger.Info("IP: %s", info.Ip)
 
 	// Display addresses if available
