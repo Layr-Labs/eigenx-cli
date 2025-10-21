@@ -29,11 +29,8 @@ const (
 	WatchPollIntervalSeconds = 5
 
 	// Environment variable names
-	MnemonicEnvVar             = "MNEMONIC"                   // Filtered out, overridden by protocol
-	EigenMachineTypeEnvVar     = "EIGEN_MACHINE_TYPE_PUBLIC" // Instance type configuration
-
-	// DefaultEnvFileName is the default name for environment files
-	DefaultEnvFileName = ".env"
+	MnemonicEnvVar         = "MNEMONIC"                   // Filtered out, overridden by protocol
+	EigenMachineTypeEnvVar = "EIGEN_MACHINE_TYPE_PUBLIC" // Instance type configuration
 )
 
 // API permissions constants

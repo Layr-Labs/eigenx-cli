@@ -63,14 +63,8 @@ func upgradeAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get env file path: %w", err)
 	}
 
-	// 7. Fetch current app info to determine default instance type
-	currentInstanceType := ""
-	userApiClient, err := utils.NewUserApiClient(cCtx)
-	if err == nil {
-		if infos, err := userApiClient.GetInfos(cCtx, []ethcommon.Address{appID}, 1); err == nil && len(infos.Apps) > 0 {
-			currentInstanceType = infos.Apps[0].MachineType
-		}
-	}
+	// 7. Get current app's instance type (best-effort, used as default for selection)
+	currentInstanceType := getCurrentInstanceType(cCtx, appID)
 
 	// 8. Get instance type selection (defaults to current app's instance type)
 	instanceType, err := utils.GetInstanceTypeInteractive(cCtx, currentInstanceType)
@@ -106,4 +100,25 @@ func upgradeAction(cCtx *cli.Context) error {
 
 	// 13. Watch until app is running
 	return utils.WatchUntilRunning(cCtx, appID, common.AppStatusUpgrading)
+}
+
+// getCurrentInstanceType attempts to retrieve the current instance type for an app.
+// Returns empty string if unable to fetch (API unavailable, app info not ready, etc.).
+// This is used as a convenience default for the upgrade flow.
+func getCurrentInstanceType(cCtx *cli.Context, appID ethcommon.Address) string {
+	userApiClient, err := utils.NewUserApiClient(cCtx)
+	if err != nil {
+		return "" // API client creation failed, skip default
+	}
+
+	infos, err := userApiClient.GetInfos(cCtx, []ethcommon.Address{appID}, 1)
+	if err != nil {
+		return "" // API call failed, skip default
+	}
+
+	if len(infos.Apps) == 0 {
+		return "" // No app info available yet
+	}
+
+	return infos.Apps[0].MachineType
 }

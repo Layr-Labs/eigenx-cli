@@ -76,7 +76,7 @@ var (
 
 	InstanceTypeFlag = &cli.StringFlag{
 		Name:  "instance-type",
-		Usage: "Machine instance type to use (g1-standard-4t, g1-standard-8t)",
+		Usage: "Machine instance type to use e.g. g1-standard-4t, g1-standard-8t",
 	}
 
 	WatchFlag = &cli.BoolFlag{
