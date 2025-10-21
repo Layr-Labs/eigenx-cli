@@ -31,7 +31,7 @@ import (
 // PrepareReleaseFromContext prepares a release with separated Dockerfile handling
 // The dockerfile path and env file path are provided as parameters (already collected earlier)
 // maxPushRetries controls how many times to retry on push permission errors (0 = no retries)
-func PrepareReleaseFromContext(cCtx *cli.Context, environmentConfig *common.EnvironmentConfig, appID gethcommon.Address, dockerfilePath string, imageRef string, envFilePath string, logRedirect string, maxPushRetries int) (appcontrollerV2.IAppControllerRelease, string, error) {
+func PrepareReleaseFromContext(cCtx *cli.Context, environmentConfig *common.EnvironmentConfig, appID gethcommon.Address, dockerfilePath string, imageRef string, envFilePath string, logRedirect string, instanceType string, maxPushRetries int) (appcontrollerV2.IAppControllerRelease, string, error) {
 	logger := common.LoggerFromContext(cCtx)
 
 	// Create operation closures that capture context
@@ -82,6 +82,11 @@ func PrepareReleaseFromContext(cCtx *cli.Context, environmentConfig *common.Envi
 			return appcontrollerV2.IAppControllerRelease{}, imageRef, fmt.Errorf("failed to parse and validate env file: %w", err)
 		}
 	}
+
+	// Inject instance type selection into public environment variables
+	// This overrides any value in .env file if present
+	publicEnv[common.EigenMachineTypeEnvVar] = instanceType
+	logger.Info("Instance: %s", instanceType)
 
 	publicEnvBytes, err := json.Marshal(publicEnv)
 	if err != nil {

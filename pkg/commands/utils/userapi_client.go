@@ -32,10 +32,22 @@ type AppInfoResponse struct {
 	Apps []AppInfo `json:"apps"`
 }
 
+// InstanceType represents a machine instance type configuration.
+// This struct matches the backend API response format for SKUs.
+type InstanceType struct {
+	SKU         string `json:"sku"`         // SKU value (e.g., "g1-standard-4t")
+	Description string `json:"description"` // Human-readable description (e.g., "4 vCPUs, 16 GB memory, TDX")
+}
+
+type SKUListResponse struct {
+	SKUs []InstanceType `json:"skus"`
+}
+
 type AppInfo struct {
-	Addresses kmstypes.SignedResponse[kmstypes.AddressesResponse] `json:"addresses"`
-	Status    string                                              `json:"app_status"`
-	Ip        string                                              `json:"ip"`
+	Addresses   kmstypes.SignedResponse[kmstypes.AddressesResponse] `json:"addresses"`
+	Status      string                                              `json:"app_status"`
+	Ip          string                                              `json:"ip"`
+	MachineType string                                              `json:"machine_type"`
 }
 
 type UserApiClient struct {
@@ -164,6 +176,27 @@ func (cc *UserApiClient) GetLogs(cCtx *cli.Context, appID ethcommon.Address) (st
 	}
 
 	return string(body), nil
+}
+
+func (cc *UserApiClient) GetSKUs(cCtx *cli.Context) (*SKUListResponse, error) {
+	endpoint := fmt.Sprintf("%s/skus", cc.environmentConfig.UserApiServerURL)
+
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleErrorResponse(resp)
+	}
+
+	var result SKUListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode SKU list response: %w", err)
+	}
+
+	return &result, nil
 }
 
 // buildAppIDsParam creates a comma-separated string of app IDs for URL parameters

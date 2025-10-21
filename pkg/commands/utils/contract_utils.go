@@ -265,6 +265,7 @@ func PrintAppInfoWithStatus(ctx context.Context, logger iface.Logger, client *et
 	// Compare contract and API status to show transition states when they differ
 	status := getDisplayStatus(config.Status, info.Status, statusOverride)
 	logger.Info("Status: %s", status)
+	logger.Info("Instance: %s", info.MachineType)
 	logger.Info("IP: %s", info.Ip)
 
 	// Display addresses if available
@@ -436,6 +437,7 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 	// Track previous state for comparison
 	var prevStatus string
 	var prevIP string
+	var prevMachineType string
 
 	userApiClient, err := NewUserApiClient(cCtx)
 	if err != nil {
@@ -447,6 +449,7 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 	if err == nil && len(info.Apps) > 0 {
 		prevStatus = info.Apps[0].Status
 		prevIP = info.Apps[0].Ip
+		prevMachineType = info.Apps[0].MachineType
 	}
 
 	// Main watch loop
@@ -472,6 +475,7 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 
 			currentStatus := info.Apps[0].Status
 			currentIP := info.Apps[0].Ip
+			currentMachineType := info.Apps[0].MachineType
 
 			// Print status changes
 			if currentStatus != prevStatus {
@@ -500,6 +504,22 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 					logger.Info("IP assigned: %s", currentIP)
 				}
 				prevIP = currentIP
+			}
+
+			// Track instance type changes
+			if currentMachineType != prevMachineType {
+				isSkuUpdate := prevMachineType != "" &&
+					prevMachineType != "No instance assigned" &&
+					currentMachineType != "" &&
+					currentMachineType != "No instance assigned"
+
+				if isSkuUpdate {
+					if currentStatus == prevStatus && currentIP == prevIP {
+						fmt.Print("\r\033[K")
+					}
+					logger.Info("Instance type changed: %s → %s", prevMachineType, currentMachineType)
+				}
+				prevMachineType = currentMachineType
 			}
 
 			// Check stop condition
