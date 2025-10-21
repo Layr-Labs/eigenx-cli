@@ -179,7 +179,7 @@ func (cc *UserApiClient) GetLogs(cCtx *cli.Context, appID ethcommon.Address) (st
 }
 
 func (cc *UserApiClient) GetSKUs(cCtx *cli.Context) (*SKUListResponse, error) {
-	endpoint := fmt.Sprintf("%s/list-skus", cc.environmentConfig.UserApiServerURL)
+	endpoint := fmt.Sprintf("%s/skus", cc.environmentConfig.UserApiServerURL)
 
 	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", endpoint, nil)
 	if err != nil {
