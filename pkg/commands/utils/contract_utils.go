@@ -266,7 +266,7 @@ func PrintAppInfoWithStatus(ctx context.Context, logger iface.Logger, client *et
 	status := getDisplayStatus(config.Status, info.Status, statusOverride)
 	logger.Info("Status: %s", status)
 	logger.Info("Instance: %s", info.MachineType)
-	logger.Info("IP: %s", info.Ip)             
+	logger.Info("IP: %s", info.Ip)
 
 	// Display addresses if available
 	if len(info.Addresses.Data.EVMAddresses) > 0 {
