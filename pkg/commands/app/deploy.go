@@ -71,7 +71,7 @@ func deployAction(cCtx *cli.Context) error {
 	// 7. Get instance type selection (uses first from backend as default for new apps)
 	instanceType, err := utils.GetInstanceTypeInteractive(cCtx, "")
 	if err != nil {
-		return fmt.Errorf("failed to get instance type: %w", err)
+		return fmt.Errorf("failed to get instance: %w", err)
 	}
 
 	// 8. Get log settings from flags or interactive prompt

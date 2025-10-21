@@ -855,12 +855,13 @@ func GetInstanceTypeInteractive(cCtx *cli.Context, defaultSKU string) (string, e
 	}
 
 	// Determine default SKU if not provided
+	isCurrentType := defaultSKU != ""
 	if defaultSKU == "" && len(availableTypes) > 0 {
 		defaultSKU = availableTypes[0].SKU // Use first from backend as default
 	}
 
 	// No flag provided - show interactive prompt
-	return selectInstanceTypeInteractively(availableTypes, defaultSKU)
+	return selectInstanceTypeInteractively(availableTypes, defaultSKU, isCurrentType)
 }
 
 // fetchAvailableInstanceTypes retrieves the list of available instance types from the backend
@@ -902,34 +903,35 @@ func validateInstanceTypeSKU(sku string, availableTypes []InstanceType) (string,
 
 // selectInstanceTypeInteractively prompts user to select from available instance types.
 // The defaultSKU parameter is highlighted as the recommended option.
-func selectInstanceTypeInteractively(availableTypes []InstanceType, defaultSKU string) (string, error) {
-	// Find default in available types to show in message
-	defaultDesc := ""
-	for _, it := range availableTypes {
-		if it.SKU == defaultSKU {
-			defaultDesc = fmt.Sprintf(" (current: %s)", it.SKU)
-			break
-		}
+// The isCurrentType flag indicates if this is an existing deployment (shows "current") vs new (shows "default").
+func selectInstanceTypeInteractively(availableTypes []InstanceType, defaultSKU string, isCurrentType bool) (string, error) {
+	// Show header based on context
+	if isCurrentType && defaultSKU != "" {
+		fmt.Printf("\nSelect instance type (current: %s):\n", defaultSKU)
+	} else {
+		fmt.Println("\nSelect instance type:")
 	}
-
-	fmt.Printf("\nSelect machine instance type%s:\n", defaultDesc)
 
 	// Build options and create lookup map in a single pass
 	options := make([]string, len(availableTypes))
 	optionToSKU := make(map[string]string, len(availableTypes))
 	for i, it := range availableTypes {
 		option := fmt.Sprintf("%s - %s", it.SKU, it.Description)
-		// Mark the default option
+		// Mark the default/current option
 		if it.SKU == defaultSKU {
-			option += " (current)"
+			if isCurrentType {
+				option += " (current)"
+			} else {
+				option += " (default)"
+			}
 		}
 		options[i] = option
 		optionToSKU[option] = it.SKU
 	}
 
-	choice, err := output.SelectString("Choose instance type:", options)
+	choice, err := output.SelectString("Choose instance:", options)
 	if err != nil {
-		return "", fmt.Errorf("failed to select instance type: %w", err)
+		return "", fmt.Errorf("failed to select instance: %w", err)
 	}
 
 	// Return the selected SKU

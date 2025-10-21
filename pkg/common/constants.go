@@ -29,7 +29,7 @@ const (
 	WatchPollIntervalSeconds = 5
 
 	// Environment variable names
-	MnemonicEnvVar         = "MNEMONIC"                   // Filtered out, overridden by protocol
+	MnemonicEnvVar         = "MNEMONIC"                  // Filtered out, overridden by protocol
 	EigenMachineTypeEnvVar = "EIGEN_MACHINE_TYPE_PUBLIC" // Instance type configuration
 )
 

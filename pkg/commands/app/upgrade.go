@@ -69,7 +69,7 @@ func upgradeAction(cCtx *cli.Context) error {
 	// 8. Get instance type selection (defaults to current app's instance type)
 	instanceType, err := utils.GetInstanceTypeInteractive(cCtx, currentInstanceType)
 	if err != nil {
-		return fmt.Errorf("failed to get instance type: %w", err)
+		return fmt.Errorf("failed to get instance: %w", err)
 	}
 
 	// 9. Get log settings from flags or interactive prompt

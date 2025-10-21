@@ -86,7 +86,7 @@ func PrepareReleaseFromContext(cCtx *cli.Context, environmentConfig *common.Envi
 	// Inject instance type selection into public environment variables
 	// This overrides any value in .env file if present
 	publicEnv[common.EigenMachineTypeEnvVar] = instanceType
-	logger.Info("Instance type: %s", instanceType)
+	logger.Info("Instance: %s", instanceType)
 
 	publicEnvBytes, err := json.Marshal(publicEnv)
 	if err != nil {
