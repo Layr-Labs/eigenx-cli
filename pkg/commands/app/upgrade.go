@@ -62,14 +62,10 @@ func upgradeAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get env file path: %w", err)
 	}
 
-	// 7. Get instance type and configure env file
+	// 7. Get instance type selection
 	instanceType, err := utils.GetInstanceTypeInteractive(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to get instance type: %w", err)
-	}
-	envFilePath, err = utils.ConfigureInstanceType(cCtx, envFilePath, instanceType)
-	if err != nil {
-		return err
 	}
 
 	// 8. Get log settings from flags or interactive prompt
@@ -79,7 +75,7 @@ func upgradeAction(cCtx *cli.Context) error {
 	}
 
 	// 9. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
-	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appID, dockerfilePath, imageRef, envFilePath, logRedirect, 3)
+	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appID, dockerfilePath, imageRef, envFilePath, logRedirect, instanceType, 3)
 	if err != nil {
 		return err
 	}

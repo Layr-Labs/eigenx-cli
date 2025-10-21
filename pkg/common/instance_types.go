@@ -2,10 +2,10 @@ package common
 
 // Instance type constants
 const (
-	// G1Standard4 represents a standard 4-core machine with TEE support
-	G1Standard4 = "g1-standard-4t"
-	// G1Standard8 represents a standard 8-core machine with TEE support
-	G1Standard8 = "g1-standard-8t"
+	// G1Standard4T represents a standard 4-core machine with TEE support
+	G1Standard4T = "g1-standard-4t"
+	// G1Standard8T represents a standard 8-core machine with TEE support
+	G1Standard8T = "g1-standard-8t"
 
 	// EigenMachineTypeEnvVar is the environment variable name for machine type configuration
 	EigenMachineTypeEnvVar = "EIGEN_MACHINE_TYPE_PUBLIC"
@@ -22,13 +22,13 @@ type InstanceType struct {
 // Using a package-level variable avoids allocating a new slice on every call
 var availableInstanceTypes = []InstanceType{
 	{
-		Name:        "G1Standard4",
-		Value:       G1Standard4,
+		Name:        "G1Standard4T",
+		Value:       G1Standard4T,
 		Description: "4 vCPUs, 16 GB memory (default)",
 	},
 	{
-		Name:        "G1Standard8",
-		Value:       G1Standard8,
+		Name:        "G1Standard8T",
+		Value:       G1Standard8T,
 		Description: "8 vCPUs, 32 GB memory",
 	},
 }

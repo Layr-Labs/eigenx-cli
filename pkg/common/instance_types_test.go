@@ -11,13 +11,13 @@ func TestValidateInstanceType(t *testing.T) {
 		want  bool
 	}{
 		{
-			name:  "valid G1Standard4",
-			value: G1Standard4,
+			name:  "valid G1Standard4T",
+			value: G1Standard4T,
 			want:  true,
 		},
 		{
-			name:  "valid G1Standard8",
-			value: G1Standard8,
+			name:  "valid G1Standard8T",
+			value: G1Standard8T,
 			want:  true,
 		},
 		{
@@ -55,18 +55,18 @@ func TestGetInstanceTypeByValue(t *testing.T) {
 		wantName  string
 	}{
 		{
-			name:      "finds G1Standard4",
-			value:     G1Standard4,
+			name:      "finds G1Standard4T",
+			value:     G1Standard4T,
 			wantFound: true,
-			wantValue: G1Standard4,
-			wantName:  "G1Standard4",
+			wantValue: G1Standard4T,
+			wantName:  "G1Standard4T",
 		},
 		{
-			name:      "finds G1Standard8",
-			value:     G1Standard8,
+			name:      "finds G1Standard8T",
+			value:     G1Standard8T,
 			wantFound: true,
-			wantValue: G1Standard8,
-			wantName:  "G1Standard8",
+			wantValue: G1Standard8T,
+			wantName:  "G1Standard8T",
 		},
 		{
 			name:      "returns false for invalid",
@@ -97,11 +97,11 @@ func TestGetInstanceTypeByValue(t *testing.T) {
 func TestGetDefaultInstanceType(t *testing.T) {
 	got := GetDefaultInstanceType()
 
-	if got.Value != G1Standard4 {
-		t.Errorf("GetDefaultInstanceType().Value = %v, want %v", got.Value, G1Standard4)
+	if got.Value != G1Standard4T {
+		t.Errorf("GetDefaultInstanceType().Value = %v, want %v", got.Value, G1Standard4T)
 	}
-	if got.Name != "G1Standard4" {
-		t.Errorf("GetDefaultInstanceType().Name = %v, want %v", got.Name, "G1Standard4")
+	if got.Name != "G1Standard4T" {
+		t.Errorf("GetDefaultInstanceType().Name = %v, want %v", got.Name, "G1Standard4T")
 	}
 }
 
@@ -113,12 +113,12 @@ func TestGetAvailableInstanceTypes(t *testing.T) {
 	}
 
 	// Check first is G1Standard4
-	if got[0].Value != G1Standard4 {
-		t.Errorf("GetAvailableInstanceTypes()[0].Value = %v, want %v", got[0].Value, G1Standard4)
+	if got[0].Value != G1Standard4T {
+		t.Errorf("GetAvailableInstanceTypes()[0].Value = %v, want %v", got[0].Value, G1Standard4T)
 	}
 
 	// Check second is G1Standard8
-	if got[1].Value != G1Standard8 {
-		t.Errorf("GetAvailableInstanceTypes()[1].Value = %v, want %v", got[1].Value, G1Standard8)
+	if got[1].Value != G1Standard8T {
+		t.Errorf("GetAvailableInstanceTypes()[1].Value = %v, want %v", got[1].Value, G1Standard8T)
 	}
 }
