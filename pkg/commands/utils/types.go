@@ -37,6 +37,5 @@ type LayeredDockerfileTemplateData struct {
 
 type EnvSourceScriptTemplateData struct {
 	KMSServerURL string
-	JWTFile      string
 	UserAPIURL   string
 }

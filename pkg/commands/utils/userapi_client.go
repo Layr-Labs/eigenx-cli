@@ -43,10 +43,10 @@ type SKUListResponse struct {
 }
 
 type AppInfo struct {
-	Addresses   kmstypes.SignedResponse[kmstypes.AddressesResponse] `json:"addresses"`
-	Status      string                                              `json:"app_status"`
-	Ip          string                                              `json:"ip"`
-	MachineType string                                              `json:"machine_type"`
+	Addresses   kmstypes.SignedResponse[kmstypes.AddressesResponseV2] `json:"addresses"`
+	Status      string                                                `json:"app_status"`
+	Ip          string                                                `json:"ip"`
+	MachineType string                                                `json:"machine_type"`
 }
 
 type UserApiClient struct {
@@ -138,6 +138,9 @@ func (cc *UserApiClient) GetInfos(cCtx *cli.Context, appIDs []ethcommon.Address,
 		}
 		if !ok {
 			return nil, fmt.Errorf("invalid signature for app %s", appIDList[i])
+		}
+		if ethcommon.HexToAddress(appInfo.Addresses.Data.AppID).Cmp(appIDs[i]) != 0 {
+			return nil, fmt.Errorf("app ID mismatch in response for app %s", appIDList[i])
 		}
 
 		result.Apps[i].Addresses.Data.EVMAddresses = result.Apps[i].Addresses.Data.EVMAddresses[:addressCount]
