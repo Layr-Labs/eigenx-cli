@@ -212,9 +212,9 @@ func logsAction(cCtx *cli.Context) error {
 		}
 		// If we can't get status either, return the original logs error
 		if err != nil {
-			return fmt.Errorf("failed to get logs: %w", err)
+			return fmt.Errorf("failed to get logs, you can watch for logs by calling this command with the watch flag ('--w'): %w", err)
 		}
-		return fmt.Errorf("failed to get logs: empty logs")
+		return fmt.Errorf("failed to get logs, you can watch for logs by calling this command with the watch flag ('--w'): empty logs")
 	}
 
 	fmt.Println(logs)
