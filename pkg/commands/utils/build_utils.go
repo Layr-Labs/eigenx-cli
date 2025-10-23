@@ -68,7 +68,7 @@ func processTemplate(templatePath string, data any) ([]byte, error) {
 }
 
 func setupLayeredBuildDirectory(environmentConfig common.EnvironmentConfig, layeredDockerfileContent []byte, scriptContent []byte, includeTLS bool) (string, error) {
-	tempDir, err := os.MkdirTemp("", LayeredBuildDirPrefix)
+	tempDir, err := os.MkdirTemp(os.TempDir(), LayeredBuildDirPrefix)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
