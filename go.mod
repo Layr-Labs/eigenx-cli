@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.5
 
 require (
-	github.com/Layr-Labs/eigenx-contracts v0.0.0-20250929214419-f0d751f5c9bc
+	github.com/Layr-Labs/eigenx-contracts v0.0.0-20251024194654-82395e726316
 	github.com/Layr-Labs/eigenx-kms v0.0.0-20250929214127-72a46e110b30
 	github.com/fatih/color v1.16.0
 	github.com/google/go-containerregistry v0.20.6
