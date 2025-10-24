@@ -542,6 +542,7 @@ func WatchUntilUpgradeComplete(cCtx *cli.Context, appID ethcommon.Address, statu
 	var initialIP string
 	var hasChanged bool
 
+	// Stop condition: Running status with IP (but only after seeing a change if starting from Running) or Stopped status with IP.
 	stopCondition := func(status, ip string) (bool, error) {
 		// Capture initial state on first call
 		if initialStatus == "" {
@@ -564,12 +565,14 @@ func WatchUntilUpgradeComplete(cCtx *cli.Context, appID ethcommon.Address, statu
 			hasChanged = true
 		}
 
-		// Exit on stable state (Running) with IP after seeing a change
+		// Exit on Running with IP, but only if:
+		// - We've seen a status change (handles upgrades), OR
+		// - Initial status was not Running (handles fresh deploys)
 		if status == common.AppStatusRunning && ip != "" && hasChanged {
 			fmt.Print("\r                              \r")
 			fmt.Println()
 
-			// Running state
+			// Only log IP if we didn't have one initially
 			if initialIP == "" || initialIP == "No IP assigned" {
 				logger.Info("App is now running with IP: %s", ip)
 			} else {
