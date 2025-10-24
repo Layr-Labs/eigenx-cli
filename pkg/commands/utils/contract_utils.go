@@ -532,9 +532,9 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 	}
 }
 
-// WatchUntilRunning watches app info until it reaches Running status with an IP address
-// statusOverride: if provided, overrides the initial status display (e.g., "Deploying", "Upgrading")
-func WatchUntilRunning(cCtx *cli.Context, appID ethcommon.Address, statusOverride ...string) error {
+// WatchUntilTransitionComplete watches app info until operation completes (deploy, upgrade, start, stop)
+// statusOverride: if provided, indicates the operation type (e.g., "Deploying", "Upgrading", "Resuming", "Stopping")
+func WatchUntilTransitionComplete(cCtx *cli.Context, appID ethcommon.Address, statusOverride ...string) error {
 	logger := common.LoggerFromContext(cCtx)
 
 	// Track initial status and whether we've seen a change
@@ -542,12 +542,25 @@ func WatchUntilRunning(cCtx *cli.Context, appID ethcommon.Address, statusOverrid
 	var initialIP string
 	var hasChanged bool
 
-	// Stop condition: Running status with IP (but only after seeing a change if starting from Running)
+	// Check if this is an upgrade operation
+	isUpgrading := len(statusOverride) > 0 && statusOverride[0] == common.AppStatusUpgrading
+
+	// Stop condition: Watch for state transitions
 	stopCondition := func(status, ip string) (bool, error) {
 		// Capture initial state on first call
 		if initialStatus == "" {
 			initialStatus = status
 			initialIP = ip
+
+			if isUpgrading && status == common.AppStatusStopped && ip != "" {
+				fmt.Print("\r                              \r")
+				fmt.Println()
+				logger.Info("App upgrade complete.")
+				logger.Info("Status: %s", status)
+				logger.Info("To start the app, run `eigenx app start %s`", appID.Hex())
+
+				return true, nil
+			}
 		}
 
 		// Track if status has changed from initial
@@ -555,22 +568,22 @@ func WatchUntilRunning(cCtx *cli.Context, appID ethcommon.Address, statusOverrid
 			hasChanged = true
 		}
 
-		// Exit on Running with IP, but only if:
-		// - We've seen a status change (handles upgrades), OR
-		// - Initial status was not Running (handles fresh deploys)
-		if status == common.AppStatusRunning && ip != "" {
-			if hasChanged || initialStatus != common.AppStatusRunning {
-				fmt.Print("\r                              \r")
-				fmt.Println()
+		// Exit on stable state (Running or Stopped) with IP after seeing a change
+		if (status == common.AppStatusRunning || status == common.AppStatusStopped) && ip != "" && hasChanged {
+			fmt.Print("\r                              \r")
+			fmt.Println()
 
-				// Only log IP if we didn't have one initially
+			if status == common.AppStatusStopped {
+				logger.Info("App is now stopped")
+			} else {
+				// Running state
 				if initialIP == "" || initialIP == "No IP assigned" {
 					logger.Info("App is now running with IP: %s", ip)
 				} else {
 					logger.Info("App is now running")
 				}
-				return true, nil
 			}
+			return true, nil
 		}
 
 		// Check for failure states
@@ -582,8 +595,8 @@ func WatchUntilRunning(cCtx *cli.Context, appID ethcommon.Address, statusOverrid
 		return false, nil
 	}
 
-	// Only notify on terminal states (Running or Failed)
-	notifyOnStates := []string{common.AppStatusRunning, common.AppStatusFailed}
+	// Only notify on terminal states (Running, Stopped, or Failed)
+	notifyOnStates := []string{common.AppStatusRunning, common.AppStatusStopped, common.AppStatusFailed}
 	return WatchAppInfoLoop(cCtx, appID, stopCondition, notifyOnStates, statusOverride...)
 }
 

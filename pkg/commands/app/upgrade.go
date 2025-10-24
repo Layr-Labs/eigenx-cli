@@ -98,8 +98,8 @@ func upgradeAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to upgrade app: %w", err)
 	}
 
-	// 13. Watch until app is running
-	return utils.WatchUntilRunning(cCtx, appID, common.AppStatusUpgrading)
+	// 13. Watch until upgrade completes
+	return utils.WatchUntilTransitionComplete(cCtx, appID, common.AppStatusUpgrading)
 }
 
 // getCurrentInstanceType attempts to retrieve the current instance type for an app.
