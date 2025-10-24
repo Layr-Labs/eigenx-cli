@@ -22,7 +22,7 @@ var EnvironmentConfigs = map[string]EnvironmentConfig{
 		PermissionControllerAddress: ChainAddresses[SepoliaChainID].PermissionController,
 		ERC7702DelegatorAddress:     CommonAddresses.ERC7702Delegator,
 		KMSServerURL:                "http://10.128.0.57:8080",
-		UserApiServerURL:            "https://34.49.173.26",
+		UserApiServerURL:            "https://userapi-compute-sepolia-dev.eigencloud.xyz",
 		DefaultRPCURL:               "https://ethereum-sepolia-rpc.publicnode.com",
 	},
 }
