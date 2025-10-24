@@ -47,6 +47,7 @@ LABEL tee.launch_policy.log_redirect={{.LogRedirect}}
 {{- end}}
 
 LABEL eigenx_cli_version={{.EigenXCLIVersion}}
+LABEL eigenx_use_ita=True
 
 {{- if .IncludeTLS}}
 # Expose both HTTP and HTTPS ports for Caddy
