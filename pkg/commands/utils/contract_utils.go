@@ -587,8 +587,8 @@ func WatchUntilUpgradeComplete(cCtx *cli.Context, appID ethcommon.Address, statu
 		return false, nil
 	}
 
-	// Only notify on terminal states (Running, Stopped, or Failed)
-	notifyOnStates := []string{common.AppStatusRunning, common.AppStatusStopped, common.AppStatusFailed}
+	// Only notify on terminal states (Running or Failed)
+	notifyOnStates := []string{common.AppStatusRunning, common.AppStatusFailed}
 	return WatchAppInfoLoop(cCtx, appID, stopCondition, notifyOnStates, statusOverride...)
 }
 
