@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -61,19 +60,10 @@ func NewUserApiClient(cCtx *cli.Context) (*UserApiClient, error) {
 		return nil, fmt.Errorf("failed to get environment config: %w", err)
 	}
 
-	// Create transport with TLS config that skips certificate verification
-	// TODO: Remove this once we have a valid certificate from a known CA
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-
 	return &UserApiClient{
 		environmentConfig: environmentConfig,
 		Client: &http.Client{
-			Timeout:   30 * time.Second,
-			Transport: transport,
+			Timeout: 30 * time.Second,
 		},
 	}, nil
 }

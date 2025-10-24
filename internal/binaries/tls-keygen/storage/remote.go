@@ -3,7 +3,6 @@ package storage
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,7 +42,7 @@ type RemoteCertificateResponse struct {
 // RemoteStorage implements Storage interface for remote API persistence
 type RemoteStorage struct {
 	BaseURL       string
-	TokenAudience string       // Audience for GCE identity token
+	TokenAudience string // Audience for GCE identity token
 	Client        *http.Client
 	Log           *slog.Logger
 }
@@ -216,15 +215,8 @@ func (r *RemoteStorage) fetchGCEToken() (string, error) {
 // httpClient returns the HTTP client to use, creating one if necessary
 func (r *RemoteStorage) httpClient() *http.Client {
 	if r.Client == nil {
-		// Create a transport that accepts self-signed certificates
-		transport := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
 		r.Client = &http.Client{
-			Timeout:   10 * time.Second,
-			Transport: transport,
+			Timeout: 10 * time.Second,
 		}
 	}
 	return r.Client
