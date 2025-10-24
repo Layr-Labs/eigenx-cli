@@ -532,9 +532,9 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 	}
 }
 
-// WatchUntilUpgradeComplete watches app info until upgrade/deployment completes
-// statusOverride: if provided, indicates the operation type (e.g., "Deploying", "Upgrading")
-func WatchUntilUpgradeComplete(cCtx *cli.Context, appID ethcommon.Address, statusOverride ...string) error {
+// WatchUntilTransitionComplete watches app info until operation completes (deploy, upgrade, start, stop)
+// statusOverride: if provided, indicates the operation type (e.g., "Deploying", "Upgrading", "Resuming", "Stopping")
+func WatchUntilTransitionComplete(cCtx *cli.Context, appID ethcommon.Address, statusOverride ...string) error {
 	logger := common.LoggerFromContext(cCtx)
 
 	// Track initial status and whether we've seen a change

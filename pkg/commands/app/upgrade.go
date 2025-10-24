@@ -99,7 +99,7 @@ func upgradeAction(cCtx *cli.Context) error {
 	}
 
 	// 13. Watch until upgrade completes
-	return utils.WatchUntilUpgradeComplete(cCtx, appID, common.AppStatusUpgrading)
+	return utils.WatchUntilTransitionComplete(cCtx, appID, common.AppStatusUpgrading)
 }
 
 // getCurrentInstanceType attempts to retrieve the current instance type for an app.

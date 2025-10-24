@@ -117,5 +117,5 @@ func deployAction(cCtx *cli.Context) error {
 	}
 
 	// 14. Watch until deployment completes
-	return utils.WatchUntilUpgradeComplete(cCtx, appID, common.AppStatusDeploying)
+	return utils.WatchUntilTransitionComplete(cCtx, appID, common.AppStatusDeploying)
 }
