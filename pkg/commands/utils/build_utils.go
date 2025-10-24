@@ -90,17 +90,10 @@ func setupLayeredBuildDirectory(environmentConfig common.EnvironmentConfig, laye
 	}
 
 	// Copy KMS keys
-	encryptionKey, signingKey, err := getKMSKeysForEnvironment(environmentConfig.Name)
+	_, signingKey, err := getKMSKeysForEnvironment(environmentConfig.Name)
 	if err != nil {
 		os.RemoveAll(tempDir)
 		return "", fmt.Errorf("failed to get keys for environment %s: %w", environmentConfig.Name, err)
-	}
-
-	encryptionKeyPath := filepath.Join(tempDir, KMSEncryptionKeyName)
-	err = os.WriteFile(encryptionKeyPath, encryptionKey, 0644)
-	if err != nil {
-		os.RemoveAll(tempDir)
-		return "", fmt.Errorf("failed to write encryption key: %w", err)
 	}
 
 	signingKeyPath := filepath.Join(tempDir, KMSSigningKeyName)
@@ -306,7 +299,6 @@ func layerLocalImage(cCtx *cli.Context, dockerClient *client.Client, environment
 
 	scriptContent, err := processTemplate(EnvSourceScriptTemplatePath, EnvSourceScriptTemplateData{
 		KMSServerURL: environmentConfig.KMSServerURL,
-		JWTFile:      JWTFilePath,
 		UserAPIURL:   environmentConfig.UserApiServerURL,
 	})
 	if err != nil {

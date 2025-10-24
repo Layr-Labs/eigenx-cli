@@ -27,8 +27,8 @@ type AppStatus struct {
 	Status string `json:"app_status"`
 }
 
-type AppInfoResponse struct {
-	Apps []AppInfo `json:"apps"`
+type RawAppInfoResponse struct {
+	Apps []RawAppInfo `json:"apps"`
 }
 
 // InstanceType represents a machine instance type configuration.
@@ -42,11 +42,24 @@ type SKUListResponse struct {
 	SKUs []InstanceType `json:"skus"`
 }
 
+type RawAppInfo struct {
+	Addresses   json.RawMessage `json:"addresses"`
+	Status      string          `json:"app_status"`
+	Ip          string          `json:"ip"`
+	MachineType string          `json:"machine_type"`
+}
+
+// AppInfo contains the app info with parsed and validated addresses
 type AppInfo struct {
-	Addresses   kmstypes.SignedResponse[kmstypes.AddressesResponse] `json:"addresses"`
-	Status      string                                              `json:"app_status"`
-	Ip          string                                              `json:"ip"`
-	MachineType string                                              `json:"machine_type"`
+	EVMAddresses    []kmstypes.EVMAddressAndDerivationPath
+	SolanaAddresses []kmstypes.SolanaAddressAndDerivationPath
+	Status          string
+	Ip              string
+	MachineType     string
+}
+
+type AppInfoResponse struct {
+	Apps []AppInfo
 }
 
 type UserApiClient struct {
@@ -118,33 +131,46 @@ func (cc *UserApiClient) GetInfos(cCtx *cli.Context, appIDs []ethcommon.Address,
 		return nil, handleErrorResponse(resp)
 	}
 
-	var result AppInfoResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	var rawResult RawAppInfoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&rawResult); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// verify signature
+	// Get signing key for verification
 	_, signingKey, err := getKMSKeysForEnvironment(cc.environmentConfig.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get KMS keys: %w", err)
 	}
 
+	// Process each app's addresses
 	appIDStrings := buildAppIDsParam(appIDs)
 	appIDList := strings.Split(appIDStrings, ",")
-	for i, appInfo := range result.Apps {
-		ok, err := kmscrypto.VerifyKMSSignature(appInfo.Addresses, signingKey)
-		if err != nil {
-			return nil, fmt.Errorf("errors verifying signature for app %s: %w", appIDList[i], err)
-		}
-		if !ok {
-			return nil, fmt.Errorf("invalid signature for app %s", appIDList[i])
-		}
 
-		result.Apps[i].Addresses.Data.EVMAddresses = result.Apps[i].Addresses.Data.EVMAddresses[:addressCount]
-		result.Apps[i].Addresses.Data.SolanaAddresses = result.Apps[i].Addresses.Data.SolanaAddresses[:addressCount]
+	result := &AppInfoResponse{
+		Apps: make([]AppInfo, len(rawResult.Apps)),
 	}
 
-	return &result, nil
+	for i, rawApp := range rawResult.Apps {
+		evmAddrs, solanaAddrs, err := processAddressesResponse(
+			rawApp.Addresses,
+			appIDs[i],
+			signingKey,
+			addressCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error processing addresses for app %s: %w", appIDList[i], err)
+		}
+
+		result.Apps[i] = AppInfo{
+			EVMAddresses:    evmAddrs,
+			SolanaAddresses: solanaAddrs,
+			Status:          rawApp.Status,
+			Ip:              rawApp.Ip,
+			MachineType:     rawApp.MachineType,
+		}
+	}
+
+	return result, nil
 }
 
 func (cc *UserApiClient) GetLogs(cCtx *cli.Context, appID ethcommon.Address) (string, error) {
@@ -240,4 +266,61 @@ func handleErrorResponse(resp *http.Response) error {
 
 	// Fallback to raw body if not valid JSON
 	return fmt.Errorf("userApi server returned status %d: %s", resp.StatusCode, string(body))
+}
+
+// processAddressesResponse attempts to parse and validate addresses response as V2, then V1
+func processAddressesResponse(
+	rawAddresses json.RawMessage,
+	appID ethcommon.Address,
+	signingKey []byte,
+	addressCount int,
+) (evmAddrs []kmstypes.EVMAddressAndDerivationPath, solanaAddrs []kmstypes.SolanaAddressAndDerivationPath, err error) {
+	// Try V2 first - unmarshal and verify signature
+	var signedV2 kmstypes.SignedResponse[kmstypes.AddressesResponseV2]
+	if err := json.Unmarshal(rawAddresses, &signedV2); err == nil {
+		// Verify signature - if this succeeds, it's V2
+		if ok, err := kmscrypto.VerifyKMSSignature(signedV2, signingKey); err == nil && ok {
+			// Validate AppID matches
+			if ethcommon.HexToAddress(signedV2.Data.AppID).Cmp(appID) != 0 {
+				return nil, nil, fmt.Errorf("app ID mismatch in V2 response")
+			}
+
+			// Truncate to requested count
+			evmAddrs = signedV2.Data.EVMAddresses
+			if len(evmAddrs) > addressCount {
+				evmAddrs = evmAddrs[:addressCount]
+			}
+			solanaAddrs = signedV2.Data.SolanaAddresses
+			if len(solanaAddrs) > addressCount {
+				solanaAddrs = solanaAddrs[:addressCount]
+			}
+			return evmAddrs, solanaAddrs, nil
+		}
+		// Signature failed - might be V1 response, fall through to try V1
+	}
+
+	// Try V1 fallback
+	var signedV1 kmstypes.SignedResponse[kmstypes.AddressesResponseV1]
+	if err := json.Unmarshal(rawAddresses, &signedV1); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal as V1 or V2: %w", err)
+	}
+
+	// Verify signature
+	if ok, err := kmscrypto.VerifyKMSSignature(signedV1, signingKey); err != nil {
+		return nil, nil, fmt.Errorf("error verifying V1 signature: %w", err)
+	} else if !ok {
+		return nil, nil, fmt.Errorf("invalid V1 signature")
+	}
+
+	// V1 doesn't have AppID field, so we can't validate it
+	// Truncate to requested count
+	evmAddrs = signedV1.Data.EVMAddresses
+	if len(evmAddrs) > addressCount {
+		evmAddrs = evmAddrs[:addressCount]
+	}
+	solanaAddrs = signedV1.Data.SolanaAddresses
+	if len(solanaAddrs) > addressCount {
+		solanaAddrs = solanaAddrs[:addressCount]
+	}
+	return evmAddrs, solanaAddrs, nil
 }
