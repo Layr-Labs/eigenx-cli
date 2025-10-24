@@ -108,7 +108,8 @@ func stopAction(cCtx *cli.Context) error {
 
 	logger.Info("App %s stopped successfully", formattedApp)
 
-	return utils.GetAndPrintAppInfo(cCtx, appID, common.AppStatusStopping)
+	// Watch until app reaches Stopped state
+	return utils.WatchUntilUpgradeComplete(cCtx, appID, common.AppStatusStopping)
 }
 
 func terminateAction(cCtx *cli.Context) error {
