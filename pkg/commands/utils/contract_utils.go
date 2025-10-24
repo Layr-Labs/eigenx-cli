@@ -533,7 +533,7 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 }
 
 // WatchUntilUpgradeComplete watches app info until upgrade/deployment completes
-// statusOverride: if provided, overrides the initial status display (e.g., "Deploying", "Upgrading")
+// statusOverride: if provided, indicates the operation type (e.g., "Deploying", "Upgrading")
 func WatchUntilUpgradeComplete(cCtx *cli.Context, appID ethcommon.Address, statusOverride ...string) error {
 	logger := common.LoggerFromContext(cCtx)
 
@@ -542,12 +542,21 @@ func WatchUntilUpgradeComplete(cCtx *cli.Context, appID ethcommon.Address, statu
 	var initialIP string
 	var hasChanged bool
 
-	// Stop condition: Running status with IP (but only after seeing a change if starting from Running)
 	stopCondition := func(status, ip string) (bool, error) {
 		// Capture initial state on first call
 		if initialStatus == "" {
 			initialStatus = status
 			initialIP = ip
+
+			if status == common.AppStatusStopped && ip != "" {
+				fmt.Print("\r                              \r")
+				fmt.Println()
+				logger.Info("App upgrade complete.")
+				logger.Info("Status: %s", status)
+				logger.Info("To start the app, run `eigenx app start %s`", appID.Hex())
+
+				return true, nil
+			}
 		}
 
 		// Track if status has changed from initial
@@ -555,21 +564,16 @@ func WatchUntilUpgradeComplete(cCtx *cli.Context, appID ethcommon.Address, statu
 			hasChanged = true
 		}
 
-		// Exit on stable state (Running or Stopped) with IP after seeing a status change
-		if (status == common.AppStatusRunning || status == common.AppStatusStopped) && ip != "" && hasChanged {
+		// Exit on stable state (Running) with IP after seeing a change
+		if status == common.AppStatusRunning && ip != "" && hasChanged {
 			fmt.Print("\r                              \r")
 			fmt.Println()
 
-			// Log appropriate message based on final state
-			if status == common.AppStatusStopped {
-				logger.Info("App upgrade complete (app remains stopped)")
+			// Running state
+			if initialIP == "" || initialIP == "No IP assigned" {
+				logger.Info("App is now running with IP: %s", ip)
 			} else {
-				// Running state
-				if initialIP == "" || initialIP == "No IP assigned" {
-					logger.Info("App is now running with IP: %s", ip)
-				} else {
-					logger.Info("App is now running")
-				}
+				logger.Info("App is now running")
 			}
 			return true, nil
 		}
