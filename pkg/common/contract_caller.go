@@ -259,6 +259,76 @@ func (cc *ContractCaller) TerminateApp(ctx context.Context, appAddress common.Ad
 	return cc.SendAndWaitForTransaction(ctx, "TerminateApp", callMsg, !force, confirmationPrompt, pendingMessage)
 }
 
+// GetActiveAppCount returns the number of active apps (STARTED or STOPPED) for a user
+func (cc *ContractCaller) GetActiveAppCount(ctx context.Context, user common.Address) (uint32, error) {
+	appController, err := appcontrollerV1.NewAppController(cc.environmentConfig.AppControllerAddress, cc.ethclient)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create app controller: %w", err)
+	}
+
+	count, err := appController.GetActiveAppCount(&bind.CallOpts{Context: ctx}, user)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get active app count: %w", err)
+	}
+
+	return count, nil
+}
+
+// GetMaxActiveAppsPerUser returns the quota limit for a user
+func (cc *ContractCaller) GetMaxActiveAppsPerUser(ctx context.Context, user common.Address) (uint32, error) {
+	appController, err := appcontrollerV1.NewAppController(cc.environmentConfig.AppControllerAddress, cc.ethclient)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create app controller: %w", err)
+	}
+
+	quota, err := appController.GetMaxActiveAppsPerUser(&bind.CallOpts{Context: ctx}, user)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get max active apps: %w", err)
+	}
+
+	return quota, nil
+}
+
+// GetAppsByCreator retrieves a paginated list of apps created by the specified address
+func (cc *ContractCaller) GetAppsByCreator(ctx context.Context, creator common.Address, offset uint64, limit uint64) ([]common.Address, any, error) {
+	appController, err := appcontrollerV1.NewAppController(cc.environmentConfig.AppControllerAddress, cc.ethclient)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create app controller: %w", err)
+	}
+
+	result, err := appController.GetAppsByCreator(
+		&bind.CallOpts{Context: ctx},
+		creator,
+		new(big.Int).SetUint64(offset),
+		new(big.Int).SetUint64(limit),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get apps by creator: %w", err)
+	}
+
+	return result.Apps, result.AppConfigsMem, nil
+}
+
+// Suspend suspends all active apps for an account and sets their max active apps to 0
+func (cc *ContractCaller) Suspend(ctx context.Context, account common.Address, apps []common.Address) error {
+	data, err := cc.appControllerBinding.TryPackSuspend(account, apps)
+	if err != nil {
+		return fmt.Errorf("failed to pack suspend: %w", err)
+	}
+
+	// Create the CallMsg
+	callMsg := &ethereum.CallMsg{
+		To:   &cc.environmentConfig.AppControllerAddress,
+		Data: data,
+	}
+
+	// Prepare messages
+	pendingMessage := fmt.Sprintf("Suspending %d app(s)...", len(apps))
+	confirmationPrompt := fmt.Sprintf("Suspend %d app(s) for account %s", len(apps), account.Hex())
+
+	return cc.SendAndWaitForTransaction(ctx, "Suspend", callMsg, cc.isMainnet(), confirmationPrompt, pendingMessage)
+}
+
 // EIP 7702 Utility Functions
 
 // CheckERC7702Delegation checks if the given account already delegates to the ERC-7702 delegator

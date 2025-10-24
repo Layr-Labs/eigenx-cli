@@ -68,6 +68,7 @@ func main() {
 		Commands: []*cli.Command{
 			commands.AppCommand,
 			commands.AuthCommand,
+			commands.BillingCommand,
 			commands.EnvironmentCommand,
 			version.VersionCommand,
 			commands.UndelegateCommand,

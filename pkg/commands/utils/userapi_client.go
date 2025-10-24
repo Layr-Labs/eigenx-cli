@@ -42,6 +42,29 @@ type SKUListResponse struct {
 	SKUs []InstanceType `json:"skus"`
 }
 
+type CheckoutSessionResponse struct {
+	SessionID   string `json:"session_id"`
+	CheckoutURL string `json:"checkout_url"`
+}
+
+type UpcomingInvoice struct {
+	Amount      float64 `json:"amount"`
+	Date        int64   `json:"date"`
+	Description string  `json:"description"`
+}
+
+type UserSubscriptionResponse struct {
+	Status             string           `json:"status"`
+	CurrentPeriodStart int64            `json:"current_period_start"`
+	CurrentPeriodEnd   int64            `json:"current_period_end"`
+	PlanPrice          float64          `json:"plan_price"`
+	Currency           string           `json:"currency"`
+	UpcomingInvoice    *UpcomingInvoice `json:"upcoming_invoice,omitempty"`
+	CancelAtPeriodEnd  bool             `json:"cancel_at_period_end"`
+	CanceledAt         *int64           `json:"canceled_at,omitempty"`
+	PortalURL          string           `json:"portal_url"`
+}
+
 type AppInfo struct {
 	Addresses   kmstypes.SignedResponse[kmstypes.AddressesResponse] `json:"addresses"`
 	Status      string                                              `json:"app_status"`
@@ -240,4 +263,62 @@ func handleErrorResponse(resp *http.Response) error {
 
 	// Fallback to raw body if not valid JSON
 	return fmt.Errorf("userApi server returned status %d: %s", resp.StatusCode, string(body))
+}
+
+func (cc *UserApiClient) CreateCheckoutSession(cCtx *cli.Context) (*CheckoutSessionResponse, error) {
+	endpoint := fmt.Sprintf("%s/subscription", cc.environmentConfig.UserApiServerURL)
+
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "POST", endpoint, &common.CanManageBillingPermission)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleErrorResponse(resp)
+	}
+
+	var result CheckoutSessionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (cc *UserApiClient) GetUserSubscription(cCtx *cli.Context) (*UserSubscriptionResponse, error) {
+	endpoint := fmt.Sprintf("%s/subscription", cc.environmentConfig.UserApiServerURL)
+
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", endpoint, &common.CanManageBillingPermission)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleErrorResponse(resp)
+	}
+
+	var result UserSubscriptionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (cc *UserApiClient) CancelSubscription(cCtx *cli.Context) error {
+	endpoint := fmt.Sprintf("%s/subscription", cc.environmentConfig.UserApiServerURL)
+
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "DELETE", endpoint, &common.CanManageBillingPermission)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return handleErrorResponse(resp)
+	}
+
+	return nil
 }
