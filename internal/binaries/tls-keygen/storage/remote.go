@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -215,7 +216,16 @@ func (r *RemoteStorage) fetchGCEToken() (string, error) {
 // httpClient returns the HTTP client to use, creating one if necessary
 func (r *RemoteStorage) httpClient() *http.Client {
 	if r.Client == nil {
-		r.Client = &http.Client{Timeout: 10 * time.Second}
+		// Create a transport that accepts self-signed certificates
+		transport := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+		r.Client = &http.Client{
+			Timeout:   10 * time.Second,
+			Transport: transport,
+		}
 	}
 	return r.Client
 }
