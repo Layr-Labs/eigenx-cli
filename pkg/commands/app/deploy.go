@@ -116,6 +116,6 @@ func deployAction(cCtx *cli.Context) error {
 		logger.Info("App saved with name: %s", name)
 	}
 
-	// 14. Watch until app is running
-	return utils.WatchUntilRunning(cCtx, appID, common.AppStatusDeploying)
+	// 14. Watch until deployment completes
+	return utils.WatchUntilUpgradeComplete(cCtx, appID, common.AppStatusDeploying)
 }

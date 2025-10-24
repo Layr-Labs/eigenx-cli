@@ -75,7 +75,7 @@ func startAction(cCtx *cli.Context) error {
 
 	logger.Info("App %s started successfully", formattedApp)
 
-	return utils.WatchUntilRunning(cCtx, appID, common.AppStatusResuming)
+	return utils.WatchUntilUpgradeComplete(cCtx, appID, common.AppStatusResuming)
 }
 
 func stopAction(cCtx *cli.Context) error {

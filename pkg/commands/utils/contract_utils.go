@@ -532,9 +532,9 @@ func WatchAppInfoLoop(cCtx *cli.Context, appID ethcommon.Address, stopCondition 
 	}
 }
 
-// WatchUntilRunning watches app info until it reaches Running status with an IP address
+// WatchUntilUpgradeComplete watches app info until upgrade/deployment completes
 // statusOverride: if provided, overrides the initial status display (e.g., "Deploying", "Upgrading")
-func WatchUntilRunning(cCtx *cli.Context, appID ethcommon.Address, statusOverride ...string) error {
+func WatchUntilUpgradeComplete(cCtx *cli.Context, appID ethcommon.Address, statusOverride ...string) error {
 	logger := common.LoggerFromContext(cCtx)
 
 	// Track initial status and whether we've seen a change
@@ -555,22 +555,23 @@ func WatchUntilRunning(cCtx *cli.Context, appID ethcommon.Address, statusOverrid
 			hasChanged = true
 		}
 
-		// Exit on Running with IP, but only if:
-		// - We've seen a status change (handles upgrades), OR
-		// - Initial status was not Running (handles fresh deploys)
-		if status == common.AppStatusRunning && ip != "" {
-			if hasChanged || initialStatus != common.AppStatusRunning {
-				fmt.Print("\r                              \r")
-				fmt.Println()
+		// Exit on stable state (Running or Stopped) with IP after seeing a status change
+		if (status == common.AppStatusRunning || status == common.AppStatusStopped) && ip != "" && hasChanged {
+			fmt.Print("\r                              \r")
+			fmt.Println()
 
-				// Only log IP if we didn't have one initially
+			// Log appropriate message based on final state
+			if status == common.AppStatusStopped {
+				logger.Info("App upgrade complete (app remains stopped)")
+			} else {
+				// Running state
 				if initialIP == "" || initialIP == "No IP assigned" {
 					logger.Info("App is now running with IP: %s", ip)
 				} else {
 					logger.Info("App is now running")
 				}
-				return true, nil
 			}
+			return true, nil
 		}
 
 		// Check for failure states
@@ -582,8 +583,8 @@ func WatchUntilRunning(cCtx *cli.Context, appID ethcommon.Address, statusOverrid
 		return false, nil
 	}
 
-	// Only notify on terminal states (Running or Failed)
-	notifyOnStates := []string{common.AppStatusRunning, common.AppStatusFailed}
+	// Only notify on terminal states (Running, Stopped, or Failed)
+	notifyOnStates := []string{common.AppStatusRunning, common.AppStatusStopped, common.AppStatusFailed}
 	return WatchAppInfoLoop(cCtx, appID, stopCondition, notifyOnStates, statusOverride...)
 }
 
