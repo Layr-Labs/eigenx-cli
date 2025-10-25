@@ -16,7 +16,7 @@ var SubscribeCommand = &cli.Command{
 		logger := common.LoggerFromContext(cCtx)
 
 		// Check if already subscribed
-		client, err := utils.NewUserApiClient(cCtx)
+		client, err := utils.NewBillingApiClient(cCtx)
 		if err != nil {
 			return fmt.Errorf("failed to create API client: %w", err)
 		}
