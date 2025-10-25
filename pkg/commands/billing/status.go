@@ -16,7 +16,7 @@ var StatusCommand = &cli.Command{
 		logger := common.LoggerFromContext(cCtx)
 
 		// Get API client
-		apiClient, err := utils.NewUserApiClient(cCtx)
+		apiClient, err := utils.NewBillingApiClient(cCtx)
 		if err != nil {
 			return fmt.Errorf("failed to create API client: %w", err)
 		}

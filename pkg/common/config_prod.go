@@ -12,6 +12,7 @@ const (
 	BuildSuffix        = ""
 	KeyringServiceName = "eigenx-cli"
 	Build              = "prod"
+	BillingEnvironment = "mainnet-alpha"
 )
 
 // EnvironmentConfigs contains all environments available in prod builds

@@ -91,6 +91,51 @@ func NewUserApiClient(cCtx *cli.Context) (*UserApiClient, error) {
 	}, nil
 }
 
+// NewBillingApiClient creates a UserApiClient specifically for billing endpoints.
+// Billing endpoints are only available on specific environments:
+// - Dev builds: sepolia
+// - Prod builds: mainnet-alpha
+func NewBillingApiClient(cCtx *cli.Context) (*UserApiClient, error) {
+	// Ensure user has credentials for the billing environment
+	if err := ensureBillingCredentials(cCtx); err != nil {
+		return nil, err
+	}
+
+	environmentConfig, err := getEnvironmentByName(common.BillingEnvironment)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get billing environment config: %w", err)
+	}
+
+	return &UserApiClient{
+		environmentConfig: environmentConfig,
+		Client: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}, nil
+}
+
+// ensureBillingCredentials checks if credentials exist for billing operations
+// and shows a helpful message if they don't
+func ensureBillingCredentials(cCtx *cli.Context) error {
+	// Try to get private key
+	_, err := GetPrivateKeyOrFail(cCtx)
+	if err == nil {
+		return nil // Credentials found
+	}
+
+	// No credentials found - determine what command to suggest
+	currentEnv := ""
+	if envConfig, err := GetEnvironmentConfig(cCtx); err == nil {
+		currentEnv = envConfig.Name
+	}
+
+	// Show appropriate auth command based on current environment
+	if currentEnv == common.BillingEnvironment {
+		return fmt.Errorf("billing requires authentication on %s. Please run: eigenx auth login", common.BillingEnvironment)
+	}
+	return fmt.Errorf("billing requires authentication on %s. Please run: eigenx auth login --environment %s", common.BillingEnvironment, common.BillingEnvironment)
+}
+
 func (cc *UserApiClient) GetStatuses(cCtx *cli.Context, appIDs []ethcommon.Address) (*AppStatusResponse, error) {
 	endpoint := fmt.Sprintf("%s/status", cc.environmentConfig.UserApiServerURL)
 
