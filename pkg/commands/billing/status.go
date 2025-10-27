@@ -94,7 +94,7 @@ var StatusCommand = &cli.Command{
 		logger.Info("Billing:")
 
 		// Next billing date and amount
-		if subscription.UpcomingInvoice != nil {
+		if subscription.UpcomingInvoice != nil && subscription.UpcomingInvoice.Date > 0 {
 			nextBilling := time.Unix(subscription.UpcomingInvoice.Date, 0)
 			logger.Info("  Next charge: $%.2f on %s",
 				subscription.UpcomingInvoice.Amount,
