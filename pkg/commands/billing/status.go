@@ -40,6 +40,16 @@ var StatusCommand = &cli.Command{
 			return nil
 		}
 
+		if subscription.Status == "canceled" {
+			logger.Info("\nYour subscription has been canceled.")
+			if subscription.CurrentPeriodEnd != nil && *subscription.CurrentPeriodEnd > 0 {
+				endDate := time.Unix(*subscription.CurrentPeriodEnd, 0)
+				logger.Info("Access ended on %s.", endDate.Format("January 2, 2006"))
+			}
+			logger.Info("Run 'eigenx billing subscribe' to resubscribe.")
+			return nil
+		}
+
 		// Plan details
 		if subscription.PlanPrice != nil && subscription.Currency != nil && *subscription.PlanPrice > 0 {
 			logger.Info("Plan: $%.2f/%s", *subscription.PlanPrice, *subscription.Currency)
