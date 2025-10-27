@@ -43,7 +43,6 @@ type SKUListResponse struct {
 }
 
 type CheckoutSessionResponse struct {
-	SessionID   string `json:"session_id"`
 	CheckoutURL string `json:"checkout_url"`
 }
 
@@ -55,14 +54,14 @@ type UpcomingInvoice struct {
 
 type UserSubscriptionResponse struct {
 	Status             string           `json:"status"`
-	CurrentPeriodStart int64            `json:"current_period_start"`
-	CurrentPeriodEnd   int64            `json:"current_period_end"`
-	PlanPrice          float64          `json:"plan_price"`
-	Currency           string           `json:"currency"`
+	CurrentPeriodStart *int64           `json:"current_period_start,omitempty"`
+	CurrentPeriodEnd   *int64           `json:"current_period_end,omitempty"`
+	PlanPrice          *float64         `json:"plan_price,omitempty"`
+	Currency           *string          `json:"currency,omitempty"`
 	UpcomingInvoice    *UpcomingInvoice `json:"upcoming_invoice,omitempty"`
-	CancelAtPeriodEnd  bool             `json:"cancel_at_period_end"`
+	CancelAtPeriodEnd  *bool            `json:"cancel_at_period_end,omitempty"`
 	CanceledAt         *int64           `json:"canceled_at,omitempty"`
-	PortalURL          string           `json:"portal_url"`
+	PortalURL          *string          `json:"portal_url,omitempty"`
 }
 
 type RawAppInfo struct {
