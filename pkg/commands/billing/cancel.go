@@ -52,28 +52,19 @@ var CancelCommand = &cli.Command{
 			return fmt.Errorf("failed to query networks: %w", err)
 		}
 
-		// Extract results into separate maps
-		networkAppCounts := make(map[string]uint32)
-		networkCallers := make(map[string]*common.ContractCaller)
+		// Calculate total active apps
 		totalActiveApps := uint32(0)
-
-		for env, info := range results {
-			if info.Count > 0 {
-				networkAppCounts[env] = info.Count
-				totalActiveApps += info.Count
-			}
-			if info.Caller != nil {
-				networkCallers[env] = info.Caller
-			}
+		for _, info := range results {
+			totalActiveApps += info.Count
 		}
 
 		// If apps exist, show per-network breakdown and get confirmation
 		if totalActiveApps > 0 {
 			logger.Info("You have active apps that will be suspended:")
-			for env, count := range networkAppCounts {
-				if count > 0 {
+			for env, info := range results {
+				if info.Count > 0 {
 					displayName := utils.GetEnvironmentDescription(env, env, false)
-					logger.Info("  • %s: %d app(s)", displayName, count)
+					logger.Info("  • %s: %d app(s)", displayName, info.Count)
 				}
 			}
 			logger.Info("")
@@ -89,12 +80,12 @@ var CancelCommand = &cli.Command{
 			}
 
 			// Suspend apps on each network that has active apps
-			for env, count := range networkAppCounts {
-				if count == 0 {
+			for env, info := range results {
+				if info.Count == 0 {
 					continue
 				}
 
-				caller := networkCallers[env]
+				caller := info.Caller
 				logger.Info("Suspending apps on %s...", env)
 
 				// Get all apps for this developer on this network
