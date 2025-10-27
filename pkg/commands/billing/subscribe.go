@@ -6,6 +6,7 @@ import (
 
 	"github.com/Layr-Labs/eigenx-cli/pkg/commands/utils"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
+	"github.com/pkg/browser"
 	"github.com/urfave/cli/v2"
 )
 
@@ -40,7 +41,7 @@ var SubscribeCommand = &cli.Command{
 
 		// Open checkout URL in browser
 		logger.Info("Opening payment page in your browser...")
-		if err := common.OpenURL(session.CheckoutURL); err != nil {
+		if err := browser.OpenURL(session.CheckoutURL); err != nil {
 			logger.Warn("Failed to open browser automatically: %v", err)
 			logger.Info("\nPlease open this URL in your browser:")
 			logger.Info(session.CheckoutURL)
