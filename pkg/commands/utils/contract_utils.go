@@ -568,20 +568,15 @@ func WatchUntilTransitionComplete(cCtx *cli.Context, appID ethcommon.Address, st
 			hasChanged = true
 		}
 
-		// Exit on stable state (Running or Stopped) with IP after seeing a change
-		if (status == common.AppStatusRunning || status == common.AppStatusStopped) && ip != "" && hasChanged {
+		// Exit on Running state with IP after seeing a change
+		if status == common.AppStatusRunning && ip != "" && hasChanged {
 			fmt.Print("\r                              \r")
 			fmt.Println()
 
-			if status == common.AppStatusStopped {
-				logger.Info("App is now stopped")
+			if initialIP == "" || initialIP == "No IP assigned" {
+				logger.Info("App is now running with IP: %s", ip)
 			} else {
-				// Running state
-				if initialIP == "" || initialIP == "No IP assigned" {
-					logger.Info("App is now running with IP: %s", ip)
-				} else {
-					logger.Info("App is now running")
-				}
+				logger.Info("App is now running")
 			}
 			return true, nil
 		}
@@ -595,8 +590,8 @@ func WatchUntilTransitionComplete(cCtx *cli.Context, appID ethcommon.Address, st
 		return false, nil
 	}
 
-	// Only notify on terminal states (Running, Stopped, or Failed)
-	notifyOnStates := []string{common.AppStatusRunning, common.AppStatusStopped, common.AppStatusFailed}
+	// Only notify on terminal states (Running or Failed)
+	notifyOnStates := []string{common.AppStatusRunning, common.AppStatusFailed}
 	return WatchAppInfoLoop(cCtx, appID, stopCondition, notifyOnStates, statusOverride...)
 }
 

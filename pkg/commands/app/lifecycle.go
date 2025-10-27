@@ -108,8 +108,7 @@ func stopAction(cCtx *cli.Context) error {
 
 	logger.Info("App %s stopped successfully", formattedApp)
 
-	// Watch until app reaches Stopped state
-	return utils.WatchUntilTransitionComplete(cCtx, appID, common.AppStatusStopping)
+	return utils.GetAndPrintAppInfo(cCtx, appID, common.AppStatusStopping)
 }
 
 func terminateAction(cCtx *cli.Context) error {
