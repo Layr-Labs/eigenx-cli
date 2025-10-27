@@ -41,8 +41,8 @@ var StatusCommand = &cli.Command{
 		}
 
 		// Plan details
-		if subscription.PlanPrice > 0 {
-			logger.Info("Plan: $%.2f/%s", subscription.PlanPrice, subscription.Currency)
+		if subscription.PlanPrice != nil && subscription.Currency != nil && *subscription.PlanPrice > 0 {
+			logger.Info("Plan: $%.2f/%s", *subscription.PlanPrice, *subscription.Currency)
 		} else {
 			logger.Info("Plan: Standard")
 		}
@@ -89,23 +89,25 @@ var StatusCommand = &cli.Command{
 			logger.Info("  Next charge: $%.2f on %s",
 				subscription.UpcomingInvoice.Amount,
 				nextBilling.Format("January 2, 2006"))
-		} else if subscription.CurrentPeriodEnd > 0 {
-			nextBilling := time.Unix(subscription.CurrentPeriodEnd, 0)
+		} else if subscription.CurrentPeriodEnd != nil && *subscription.CurrentPeriodEnd > 0 {
+			nextBilling := time.Unix(*subscription.CurrentPeriodEnd, 0)
 			logger.Info("  Next billing: %s", nextBilling.Format("January 2, 2006"))
 		}
 
 		// Cancellation status
-		if subscription.CancelAtPeriodEnd {
-			endDate := time.Unix(subscription.CurrentPeriodEnd, 0)
-			logger.Info("  ⚠ Scheduled for cancellation on %s", endDate.Format("January 2, 2006"))
+		if subscription.CancelAtPeriodEnd != nil && *subscription.CancelAtPeriodEnd {
+			if subscription.CurrentPeriodEnd != nil {
+				endDate := time.Unix(*subscription.CurrentPeriodEnd, 0)
+				logger.Info("  ⚠ Scheduled for cancellation on %s", endDate.Format("January 2, 2006"))
+			}
 		}
 
 		logger.Info("")
 
 		// Billing portal link
-		if subscription.PortalURL != "" {
+		if subscription.PortalURL != nil && *subscription.PortalURL != "" {
 			logger.Info("Manage billing online:")
-			logger.Info("  %s", subscription.PortalURL)
+			logger.Info("  %s", *subscription.PortalURL)
 			logger.Info("")
 		}
 		return nil
