@@ -47,6 +47,13 @@ var StatusCommand = &cli.Command{
 				logger.Info("Access ended on %s.", endDate.Format("January 2, 2006"))
 			}
 			logger.Info("Run 'eigenx billing subscribe' to resubscribe.")
+
+			// Show portal link for viewing invoices
+			if subscription.PortalURL != nil && *subscription.PortalURL != "" {
+				logger.Info("\nView invoices and billing history:")
+				logger.Info("  %s", *subscription.PortalURL)
+			}
+
 			return nil
 		}
 
