@@ -203,7 +203,7 @@ func logsAction(cCtx *cli.Context) error {
 			case common.AppStatusStopping:
 				logger.Info("%s is currently stopping. Logs may be limited.", formattedApp)
 				return nil
-			case common.AppStatusStopped, common.AppStatusTerminating, common.AppStatusTerminated:
+			case common.AppStatusStopped, common.AppStatusTerminating, common.AppStatusTerminated, common.AppStatusSuspended:
 				logger.Info("%s is %s. Logs are not available.", formattedApp, strings.ToLower(status))
 				return nil
 			case common.AppStatusFailed:

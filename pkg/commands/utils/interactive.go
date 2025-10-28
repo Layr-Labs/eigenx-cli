@@ -250,7 +250,7 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 		case "view":
 			return true
 		case "start":
-			return status == common.ContractAppStatusStopped || exitedApps[addr.Hex()]
+			return status == common.ContractAppStatusStopped || status == common.ContractAppStatusSuspended || exitedApps[addr.Hex()]
 		case "stop":
 			return status == common.ContractAppStatusStarted || exitedApps[addr.Hex()]
 		default:
@@ -751,10 +751,12 @@ func getStatusPriority(status common.AppStatus, isExited bool) int {
 		return 2 // Exited apps come second
 	case common.ContractAppStatusStopped:
 		return 3
-	case common.ContractAppStatusTerminated:
+	case common.ContractAppStatusSuspended:
 		return 4
-	default:
+	case common.ContractAppStatusTerminated:
 		return 5
+	default:
+		return 6
 	}
 }
 
@@ -765,6 +767,8 @@ func getStatusString(status common.AppStatus) string {
 		return "Running"
 	case common.ContractAppStatusStopped:
 		return "Stopped"
+	case common.ContractAppStatusSuspended:
+		return "Suspended"
 	case common.ContractAppStatusTerminated:
 		return "Terminated"
 	default:
