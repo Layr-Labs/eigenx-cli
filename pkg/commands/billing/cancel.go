@@ -1,11 +1,13 @@
 package billing
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Layr-Labs/eigenx-cli/pkg/commands/utils"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common/output"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli/v2"
 )
 
@@ -88,15 +90,19 @@ var CancelCommand = &cli.Command{
 				caller := info.Caller
 				logger.Info("Suspending apps on %s...", env)
 
-				// Get all apps for this developer on this network
-				apps, _, err := caller.GetAppsByCreator(ctx, developerAddr, 0, 1_000)
+				// Get only active apps for this developer on this network
+				activeApps, err := getActiveAppsByCreator(ctx, caller, developerAddr)
 				if err != nil {
-					return fmt.Errorf("failed to get apps for %s: %w", env, err)
+					return fmt.Errorf("failed to get active apps for %s: %w", env, err)
 				}
 
-				// Call suspend with all apps
-				// Note: The contract will filter to only active apps (STARTED/STOPPED)
-				err = caller.Suspend(ctx, developerAddr, apps)
+				if len(activeApps) == 0 {
+					logger.Info("No active apps to suspend on %s", env)
+					continue
+				}
+
+				// Suspend only active apps
+				err = caller.Suspend(ctx, developerAddr, activeApps)
 				if err != nil {
 					return fmt.Errorf("failed to suspend apps on %s: %w", env, err)
 				}
@@ -126,4 +132,24 @@ var CancelCommand = &cli.Command{
 		logger.Info("\n✓ Subscription canceled successfully.")
 		return nil
 	},
+}
+
+// getActiveAppsByCreator retrieves only the active apps (STARTED/STOPPED) for a creator
+func getActiveAppsByCreator(ctx context.Context, caller *common.ContractCaller, creator ethcommon.Address) ([]ethcommon.Address, error) {
+	// Get all apps for this creator on this network
+	allApps, appConfigs, err := caller.GetAppsByCreator(ctx, creator, 0, 1_000)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get apps by creator: %w", err)
+	}
+
+	// Filter to only active apps (STARTED/STOPPED)
+	var activeApps []ethcommon.Address
+	for i, app := range allApps {
+		config := appConfigs[i]
+		status := common.AppStatus(config.Status)
+		if status == common.ContractAppStatusStarted || status == common.ContractAppStatusStopped {
+			activeApps = append(activeApps, app)
+		}
+	}
+	return activeApps, nil
 }

@@ -290,7 +290,7 @@ func (cc *ContractCaller) GetMaxActiveAppsPerUser(ctx context.Context, user comm
 }
 
 // GetAppsByCreator retrieves a paginated list of apps created by the specified address
-func (cc *ContractCaller) GetAppsByCreator(ctx context.Context, creator common.Address, offset uint64, limit uint64) ([]common.Address, any, error) {
+func (cc *ContractCaller) GetAppsByCreator(ctx context.Context, creator common.Address, offset uint64, limit uint64) ([]common.Address, []appcontrollerV1.IAppControllerAppConfig, error) {
 	appController, err := appcontrollerV1.NewAppController(cc.environmentConfig.AppControllerAddress, cc.ethclient)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create app controller: %w", err)
