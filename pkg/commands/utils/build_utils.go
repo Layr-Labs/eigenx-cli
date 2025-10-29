@@ -158,12 +158,16 @@ func extractImageConfig(dockerClient *client.Client, ctx context.Context, imageT
 		return nil, "", fmt.Errorf("failed to inspect base image: %w", err)
 	}
 
-	originalCmd := inspectResp.Config.Cmd
-	if len(originalCmd) == 0 && len(inspectResp.Config.Entrypoint) > 0 {
-		originalCmd = inspectResp.Config.Entrypoint
+	// Combine Entrypoint and Cmd to get full command
+	cmd := []string{}
+	if len(inspectResp.Config.Entrypoint) > 0 {
+		cmd = append(cmd, inspectResp.Config.Entrypoint...)
+	}
+	if len(inspectResp.Config.Cmd) > 0 {
+		cmd = append(cmd, inspectResp.Config.Cmd...)
 	}
 
-	return originalCmd, inspectResp.Config.User, nil
+	return cmd, inspectResp.Config.User, nil
 }
 
 // extractDigestFromRepoDigest extracts the sha256 digest from a Docker repo digest string
