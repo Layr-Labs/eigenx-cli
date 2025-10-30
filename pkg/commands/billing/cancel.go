@@ -14,6 +14,9 @@ import (
 var CancelCommand = &cli.Command{
 	Name:  "cancel",
 	Usage: "Cancel subscription",
+	Flags: append(common.GlobalFlags, []cli.Flag{
+		common.EnvironmentFlag,
+	}...),
 	Action: func(cCtx *cli.Context) error {
 		ctx := cCtx.Context
 		logger := common.LoggerFromContext(cCtx)

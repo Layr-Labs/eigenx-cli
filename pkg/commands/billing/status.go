@@ -13,6 +13,9 @@ import (
 var StatusCommand = &cli.Command{
 	Name:  "status",
 	Usage: "Show subscription status and usage",
+	Flags: append(common.GlobalFlags, []cli.Flag{
+		common.EnvironmentFlag,
+	}...),
 	Action: func(cCtx *cli.Context) error {
 		logger := common.LoggerFromContext(cCtx)
 		environmentConfig, err := utils.GetEnvironmentConfig(cCtx)
