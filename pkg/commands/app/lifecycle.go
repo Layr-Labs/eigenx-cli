@@ -34,7 +34,7 @@ var StopCommand = &cli.Command{
 
 var TerminateCommand = &cli.Command{
 	Name:      "terminate",
-	Usage:     "Terminate app (terminate GCP instance)",
+	Usage:     "Terminate app (terminate GCP instance) permanently",
 	ArgsUsage: "[app-id|name]",
 	Flags: append(common.GlobalFlags, []cli.Flag{
 		common.EnvironmentFlag,

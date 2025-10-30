@@ -315,6 +315,8 @@ func contractStatusToString(status uint8) string {
 		return "Running"
 	case common.ContractAppStatusStopped:
 		return "Stopped"
+	case common.ContractAppStatusSuspended:
+		return "Suspended"
 	case common.ContractAppStatusTerminated:
 		return "Terminated"
 	default:

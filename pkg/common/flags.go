@@ -5,8 +5,9 @@ import "github.com/urfave/cli/v2"
 // Common flag definitions
 var (
 	EnvironmentFlag = &cli.StringFlag{
-		Name:  "environment",
-		Usage: "Deployment environment to use",
+		Name:    "environment",
+		Aliases: []string{"env"},
+		Usage:   "Deployment environment to use",
 	}
 
 	RpcUrlFlag = &cli.StringFlag{

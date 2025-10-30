@@ -109,15 +109,6 @@ func GetPrivateKeyOrFail(cCtx *cli.Context) (string, error) {
 		}
 	}
 
-	// Try default
-	if privateKey, err := common.GetPrivateKey("default"); err == nil {
-		// Validate the key format
-		if err := common.ValidatePrivateKey(privateKey); err != nil {
-			return "", fmt.Errorf("invalid private key in keyring for default: %w", err)
-		}
-		return privateKey, nil
-	}
-
 	// Provide clear instructions on how to provide the key
 	return "", fmt.Errorf(`private key required. Please provide it via:
   • Keyring: eigenx auth login
