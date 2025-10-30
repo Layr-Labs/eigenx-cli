@@ -35,6 +35,9 @@ var StatusCommand = &cli.Command{
 			return fmt.Errorf("failed to get subscription details: %w", err)
 		}
 
+		hasCurrentPeriodEnd := subscription.CurrentPeriodEnd != nil && *subscription.CurrentPeriodEnd > 0
+		dateFormat := "January 2, 2006"
+
 		// Display subscription information
 		fmt.Println()
 
@@ -45,9 +48,9 @@ var StatusCommand = &cli.Command{
 		// Show historical details if canceled
 		if subscription.Status == utils.StatusCanceled {
 			logger.Info("\nYour subscription has been canceled.")
-			if subscription.CurrentPeriodEnd != nil && *subscription.CurrentPeriodEnd > 0 {
+			if hasCurrentPeriodEnd {
 				endDate := time.Unix(*subscription.CurrentPeriodEnd, 0)
-				logger.Info("Access ended on %s.", endDate.Format("January 2, 2006"))
+				logger.Info("Access ended on %s.", endDate.Format(dateFormat))
 			}
 			logger.Info("Run 'eigenx billing subscribe' to resubscribe.")
 
@@ -113,19 +116,17 @@ var StatusCommand = &cli.Command{
 		// Next billing date and amount
 		if subscription.UpcomingInvoice != nil && subscription.UpcomingInvoice.Date > 0 {
 			nextBilling := time.Unix(subscription.UpcomingInvoice.Date, 0)
-			logger.Info("  Next charge: $%.2f on %s",
-				subscription.UpcomingInvoice.Amount,
-				nextBilling.Format("January 2, 2006"))
-		} else if subscription.CurrentPeriodEnd != nil && *subscription.CurrentPeriodEnd > 0 {
+			logger.Info("  Next charge: $%.2f on %s", subscription.UpcomingInvoice.Amount, nextBilling.Format(dateFormat))
+		} else if hasCurrentPeriodEnd {
 			nextBilling := time.Unix(*subscription.CurrentPeriodEnd, 0)
-			logger.Info("  Next billing: %s", nextBilling.Format("January 2, 2006"))
+			logger.Info("  Next billing: %s", nextBilling.Format(dateFormat))
 		}
 
 		// Cancellation status
 		if subscription.CancelAtPeriodEnd != nil && *subscription.CancelAtPeriodEnd {
-			if subscription.CurrentPeriodEnd != nil {
+			if hasCurrentPeriodEnd {
 				endDate := time.Unix(*subscription.CurrentPeriodEnd, 0)
-				logger.Info("  ⚠ Scheduled for cancellation on %s", endDate.Format("January 2, 2006"))
+				logger.Info("  ⚠ Scheduled for cancellation on %s", endDate.Format(dateFormat))
 			}
 		}
 
