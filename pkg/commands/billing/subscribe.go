@@ -13,6 +13,9 @@ import (
 var SubscribeCommand = &cli.Command{
 	Name:  "subscribe",
 	Usage: "Subscribe to start deploying apps",
+	Flags: append(common.GlobalFlags, []cli.Flag{
+		common.EnvironmentFlag,
+	}...),
 	Action: func(cCtx *cli.Context) error {
 		logger := common.LoggerFromContext(cCtx)
 		environmentConfig, err := utils.GetEnvironmentConfig(cCtx)
