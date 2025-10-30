@@ -2,7 +2,6 @@ package billing
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Layr-Labs/eigenx-cli/pkg/commands/utils"
@@ -83,7 +82,7 @@ var StatusCommand = &cli.Command{
 
 		// Plan details
 		if subscription.PlanPrice != nil && subscription.Currency != nil && *subscription.PlanPrice > 0 {
-			logger.Info("Plan: $%.2f %s", *subscription.PlanPrice, strings.ToUpper(*subscription.Currency))
+			logger.Info("Plan: $%.2f/month", *subscription.PlanPrice)
 		} else {
 			logger.Info("Plan: Standard")
 		}
