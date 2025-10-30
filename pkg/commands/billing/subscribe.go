@@ -15,9 +15,14 @@ var SubscribeCommand = &cli.Command{
 	Usage: "Subscribe to start deploying apps",
 	Action: func(cCtx *cli.Context) error {
 		logger := common.LoggerFromContext(cCtx)
+		environmentConfig, err := utils.GetEnvironmentConfig(cCtx)
+		if err != nil {
+			return fmt.Errorf("failed to get environment config: %w", err)
+		}
+		envName := environmentConfig.Name
 
 		// Check if already subscribed
-		client, err := utils.NewBillingApiClient(cCtx)
+		client, err := utils.NewUserApiClient(cCtx)
 		if err != nil {
 			return fmt.Errorf("failed to create API client: %w", err)
 		}
@@ -27,13 +32,26 @@ var SubscribeCommand = &cli.Command{
 			return fmt.Errorf("failed to check subscription status: %w", err)
 		}
 
-		if subscription.Status == "active" {
-			logger.Info("You're already subscribed. Run 'eigenx billing status' for details.")
+		if isSubscriptionActive(subscription.Status) {
+			logger.Info("You're already subscribed to %s. Run 'eigenx billing status' for details.", envName)
+			return nil
+		}
+
+		// Handle payment issues - direct to portal instead of creating new subscription
+		if subscription.Status == utils.StatusPastDue || subscription.Status == utils.StatusUnpaid {
+			logger.Info("You already have a subscription on %s, but it has a payment issue.", envName)
+			logger.Info("Please update your payment method to restore access.")
+
+			if subscription.PortalURL != nil && *subscription.PortalURL != "" {
+				logger.Info("\nUpdate payment method:")
+				logger.Info("  %s", *subscription.PortalURL)
+			}
+
 			return nil
 		}
 
 		// Create checkout session
-		logger.Info("Creating checkout session...")
+		logger.Info("Creating checkout session for %s...", envName)
 		session, err := client.CreateCheckoutSession(cCtx)
 		if err != nil {
 			return fmt.Errorf("failed to create checkout session: %w", err)
@@ -64,11 +82,9 @@ var SubscribeCommand = &cli.Command{
 					continue
 				}
 
-				if subscription.Status == "active" {
-					logger.Info("\n✓ Subscription activated successfully!")
-					logger.Info("\nYou now have access to:")
-					logger.Info("  • 1 app on testnet (sepolia)")
-					logger.Info("  • 1 app on mainnet (mainnet-alpha)")
+				if isSubscriptionActive(subscription.Status) {
+					logger.Info("\n✓ Subscription activated successfully for %s!", envName)
+					logger.Info("\nYou now have access to deploy 1 app on %s", envName)
 					logger.Info("\nStart deploying with: eigenx app deploy")
 					return nil
 				}

@@ -17,6 +17,21 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// SubscriptionStatus represents the state of a user's subscription
+type SubscriptionStatus string
+
+const (
+	StatusIncomplete        SubscriptionStatus = "incomplete"
+	StatusIncompleteExpired SubscriptionStatus = "incomplete_expired"
+	StatusTrialing          SubscriptionStatus = "trialing"
+	StatusActive            SubscriptionStatus = "active"
+	StatusPastDue           SubscriptionStatus = "past_due"
+	StatusCanceled          SubscriptionStatus = "canceled"
+	StatusUnpaid            SubscriptionStatus = "unpaid"
+	StatusPaused            SubscriptionStatus = "paused"
+	StatusInactive          SubscriptionStatus = "inactive"
+)
+
 const MAX_ADDRESS_COUNT = 5
 
 type AppStatusResponse struct {
@@ -53,15 +68,15 @@ type UpcomingInvoice struct {
 }
 
 type UserSubscriptionResponse struct {
-	Status             string           `json:"status"`
-	CurrentPeriodStart *int64           `json:"current_period_start,omitempty"`
-	CurrentPeriodEnd   *int64           `json:"current_period_end,omitempty"`
-	PlanPrice          *float64         `json:"plan_price,omitempty"`
-	Currency           *string          `json:"currency,omitempty"`
-	UpcomingInvoice    *UpcomingInvoice `json:"upcoming_invoice,omitempty"`
-	CancelAtPeriodEnd  *bool            `json:"cancel_at_period_end,omitempty"`
-	CanceledAt         *int64           `json:"canceled_at,omitempty"`
-	PortalURL          *string          `json:"portal_url,omitempty"`
+	Status             SubscriptionStatus `json:"status"`
+	CurrentPeriodStart *int64             `json:"current_period_start,omitempty"`
+	CurrentPeriodEnd   *int64             `json:"current_period_end,omitempty"`
+	PlanPrice          *float64           `json:"plan_price,omitempty"`
+	Currency           *string            `json:"currency,omitempty"`
+	UpcomingInvoice    *UpcomingInvoice   `json:"upcoming_invoice,omitempty"`
+	CancelAtPeriodEnd  *bool              `json:"cancel_at_period_end,omitempty"`
+	CanceledAt         *int64             `json:"canceled_at,omitempty"`
+	PortalURL          *string            `json:"portal_url,omitempty"`
 }
 
 type RawAppInfo struct {
@@ -101,51 +116,6 @@ func NewUserApiClient(cCtx *cli.Context) (*UserApiClient, error) {
 			Timeout: 30 * time.Second,
 		},
 	}, nil
-}
-
-// NewBillingApiClient creates a UserApiClient specifically for billing endpoints.
-// Billing endpoints are only available on specific environments:
-// - Dev builds: sepolia
-// - Prod builds: mainnet-alpha
-func NewBillingApiClient(cCtx *cli.Context) (*UserApiClient, error) {
-	// Ensure user has credentials for the billing environment
-	if err := ensureBillingCredentials(cCtx); err != nil {
-		return nil, err
-	}
-
-	environmentConfig, err := getEnvironmentByName(common.BillingEnvironment)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get billing environment config: %w", err)
-	}
-
-	return &UserApiClient{
-		environmentConfig: environmentConfig,
-		Client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
-	}, nil
-}
-
-// ensureBillingCredentials checks if credentials exist for billing operations
-// and shows a helpful message if they don't
-func ensureBillingCredentials(cCtx *cli.Context) error {
-	// Try to get private key
-	_, err := GetPrivateKeyOrFail(cCtx)
-	if err == nil {
-		return nil // Credentials found
-	}
-
-	// No credentials found - determine what command to suggest
-	currentEnv := ""
-	if envConfig, err := GetEnvironmentConfig(cCtx); err == nil {
-		currentEnv = envConfig.Name
-	}
-
-	// Show appropriate auth command based on current environment
-	if currentEnv == common.BillingEnvironment {
-		return fmt.Errorf("billing requires authentication on %s. Please run: eigenx auth login", common.BillingEnvironment)
-	}
-	return fmt.Errorf("billing requires authentication on %s. Please run: eigenx auth login --environment %s", common.BillingEnvironment, common.BillingEnvironment)
 }
 
 func (cc *UserApiClient) GetStatuses(cCtx *cli.Context, appIDs []ethcommon.Address) (*AppStatusResponse, error) {

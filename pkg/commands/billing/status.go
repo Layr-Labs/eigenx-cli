@@ -14,9 +14,14 @@ var StatusCommand = &cli.Command{
 	Usage: "Show subscription status and usage",
 	Action: func(cCtx *cli.Context) error {
 		logger := common.LoggerFromContext(cCtx)
+		environmentConfig, err := utils.GetEnvironmentConfig(cCtx)
+		if err != nil {
+			return fmt.Errorf("failed to get environment config: %w", err)
+		}
+		envName := environmentConfig.Name
 
 		// Get API client
-		apiClient, err := utils.NewBillingApiClient(cCtx)
+		apiClient, err := utils.NewUserApiClient(cCtx)
 		if err != nil {
 			return fmt.Errorf("failed to create API client: %w", err)
 		}
@@ -34,13 +39,8 @@ var StatusCommand = &cli.Command{
 		statusDisplay := formatStatus(subscription.Status)
 		logger.Info("Status: %s", statusDisplay)
 
-		if subscription.Status == "inactive" {
-			logger.Info("\nYou don't have an active subscription.")
-			logger.Info("Run 'eigenx billing subscribe' to get started.")
-			return nil
-		}
-
-		if subscription.Status == "canceled" {
+		// Show historical details if canceled
+		if subscription.Status == utils.StatusCanceled {
 			logger.Info("\nYour subscription has been canceled.")
 			if subscription.CurrentPeriodEnd != nil && *subscription.CurrentPeriodEnd > 0 {
 				endDate := time.Unix(*subscription.CurrentPeriodEnd, 0)
@@ -57,45 +57,53 @@ var StatusCommand = &cli.Command{
 			return nil
 		}
 
+		// Handle payment issues (past_due, unpaid) - show portal to fix
+		if subscription.Status == utils.StatusPastDue || subscription.Status == utils.StatusUnpaid {
+			logger.Warn("\nYour subscription has a payment issue.")
+			logger.Info("Please update your payment method to restore access.")
+
+			if subscription.PortalURL != nil && *subscription.PortalURL != "" {
+				logger.Info("\nUpdate payment method:")
+				logger.Info("  %s", *subscription.PortalURL)
+			}
+
+			return nil
+		}
+
+		// Handle all other inactive statuses (incomplete, expired, paused, inactive)
+		if !isSubscriptionActive(subscription.Status) {
+			logger.Info("\nYou don't have an active subscription on %s.", envName)
+			logger.Info("Run 'eigenx billing subscribe' to get started.")
+			return nil
+		}
+
 		// Plan details
 		if subscription.PlanPrice != nil && subscription.Currency != nil && *subscription.PlanPrice > 0 {
 			logger.Info("Plan: $%.2f/%s", *subscription.PlanPrice, *subscription.Currency)
 		} else {
 			logger.Info("Plan: Standard")
 		}
-		logger.Info("  • 1 app per network")
+		logger.Info("  - 1 app deployed on %s", envName)
 		logger.Info("")
 
-		// Network-specific usage
-		logger.Info("Network capacity:")
+		// Current environment usage
+		logger.Info("Usage:")
 
-		// Get developer address
-		developerAddr, err := utils.GetDeveloperAddress(cCtx)
+		// Get contract caller for current environment
+		caller, err := utils.GetContractCaller(cCtx)
 		if err != nil {
+			logger.Warn("  Unable to fetch usage: %v", err)
+			logger.Info("")
+		} else if developerAddr, err := utils.GetDeveloperAddress(cCtx); err != nil {
 			logger.Warn("  Unable to fetch usage: failed to get developer address")
+			logger.Info("")
+		} else if count, err := caller.GetActiveAppCount(cCtx.Context, developerAddr); err != nil {
+			logger.Warn("  Unable to fetch usage: %v", err)
+			logger.Info("")
 		} else {
-			// Get private key for contract calls
-			privateKey, err := utils.GetPrivateKeyOrFail(cCtx)
-			if err != nil {
-				logger.Warn("  Unable to fetch usage: failed to get private key")
-			} else {
-				ctx := cCtx.Context
-
-				// Query all networks for active app counts
-				results, err := GetActiveAppCountsForAllNetworks(ctx, cCtx, developerAddr, privateKey, false)
-				if err != nil {
-					logger.Warn("  Unable to fetch usage: %v", err)
-				} else {
-					// Display results for each network
-					for env, info := range results {
-						displayName := utils.GetEnvironmentDescription(env, env, false)
-						logger.Info("  %s: %d / 1 apps deployed", displayName, info.Count)
-					}
-				}
-			}
+			logger.Info("  %d / 1 apps deployed on %s", count, envName)
+			logger.Info("")
 		}
-
-		logger.Info("")
 
 		// Billing information
 		logger.Info("Billing:")
@@ -131,17 +139,32 @@ var StatusCommand = &cli.Command{
 	},
 }
 
-func formatStatus(status string) string {
+// isSubscriptionActive returns true if the subscription status allows deploying apps
+func isSubscriptionActive(status utils.SubscriptionStatus) bool {
+	return status == utils.StatusActive || status == utils.StatusTrialing
+}
+
+func formatStatus(status utils.SubscriptionStatus) string {
 	switch status {
-	case "active":
+	case utils.StatusActive:
 		return "✓ Active"
-	case "past_due":
+	case utils.StatusTrialing:
+		return "✓ Trial"
+	case utils.StatusPastDue:
 		return "⚠ Past Due"
-	case "canceled":
+	case utils.StatusCanceled:
 		return "✗ Canceled"
-	case "inactive":
+	case utils.StatusInactive:
 		return "✗ Inactive"
+	case utils.StatusIncomplete:
+		return "⚠ Incomplete"
+	case utils.StatusIncompleteExpired:
+		return "✗ Expired"
+	case utils.StatusUnpaid:
+		return "⚠ Unpaid"
+	case utils.StatusPaused:
+		return "⚠ Paused"
 	default:
-		return status
+		return string(status)
 	}
 }
