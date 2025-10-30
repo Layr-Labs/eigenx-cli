@@ -12,7 +12,6 @@ const (
 	BuildSuffix        = "-dev"
 	KeyringServiceName = "eigenx-cli-dev"
 	Build              = "dev"
-	BillingEnvironment = "sepolia"
 )
 
 // EnvironmentConfigs contains all environments available in dev builds

@@ -17,9 +17,14 @@ var CancelCommand = &cli.Command{
 	Action: func(cCtx *cli.Context) error {
 		ctx := cCtx.Context
 		logger := common.LoggerFromContext(cCtx)
+		environmentConfig, err := utils.GetEnvironmentConfig(cCtx)
+		if err != nil {
+			return fmt.Errorf("failed to get environment config: %w", err)
+		}
+		envName := environmentConfig.Name
 
 		// Get API client
-		apiClient, err := utils.NewBillingApiClient(cCtx)
+		apiClient, err := utils.NewUserApiClient(cCtx)
 		if err != nil {
 			return fmt.Errorf("failed to create API client: %w", err)
 		}
@@ -30,9 +35,15 @@ var CancelCommand = &cli.Command{
 			return fmt.Errorf("failed to check subscription status: %w", err)
 		}
 
-		if subscription.Status != "active" {
-			logger.Info("You don't have an active subscription.")
+		if !isSubscriptionActive(subscription.Status) {
+			logger.Info("You don't have an active subscription on %s.", envName)
 			return nil
+		}
+
+		// Get contract caller for current environment
+		caller, err := utils.GetContractCaller(cCtx)
+		if err != nil {
+			return fmt.Errorf("failed to get contract caller: %w", err)
 		}
 
 		// Get developer address
@@ -41,34 +52,15 @@ var CancelCommand = &cli.Command{
 			return fmt.Errorf("failed to get developer address: %w", err)
 		}
 
-		// Check active apps across all networks
-		// Get private key for contract calls
-		privateKey, err := utils.GetPrivateKeyOrFail(cCtx)
+		// Check active apps on current environment
+		activeAppCount, err := caller.GetActiveAppCount(ctx, developerAddr)
 		if err != nil {
-			return fmt.Errorf("failed to get private key: %w", err)
+			return fmt.Errorf("failed to get active app count: %w", err)
 		}
 
-		// Query all networks for active app counts
-		results, err := GetActiveAppCountsForAllNetworks(ctx, cCtx, developerAddr, privateKey, true)
-		if err != nil {
-			return fmt.Errorf("failed to query networks: %w", err)
-		}
-
-		// Calculate total active apps
-		totalActiveApps := uint32(0)
-		for _, info := range results {
-			totalActiveApps += info.Count
-		}
-
-		// If apps exist, show per-network breakdown and get confirmation
-		if totalActiveApps > 0 {
-			logger.Info("You have active apps that will be suspended:")
-			for env, info := range results {
-				if info.Count > 0 {
-					displayName := utils.GetEnvironmentDescription(env, env, false)
-					logger.Info("  • %s: %d app(s)", displayName, info.Count)
-				}
-			}
+		// If apps exist, show warning and get confirmation
+		if activeAppCount > 0 {
+			logger.Info("You have %d active app(s) on %s that will be suspended.", activeAppCount, envName)
 			logger.Info("")
 
 			confirmed, err := output.Confirm("Continue?")
@@ -81,37 +73,26 @@ var CancelCommand = &cli.Command{
 				return nil
 			}
 
-			// Suspend apps on each network that has active apps
-			for env, info := range results {
-				if info.Count == 0 {
-					continue
-				}
+			// Get only active apps for this developer
+			activeApps, err := getActiveAppsByCreator(ctx, caller, developerAddr)
+			if err != nil {
+				return fmt.Errorf("failed to get active apps: %w", err)
+			}
 
-				caller := info.Caller
-				logger.Info("Suspending apps on %s...", env)
-
-				// Get only active apps for this developer on this network
-				activeApps, err := getActiveAppsByCreator(ctx, caller, developerAddr)
-				if err != nil {
-					return fmt.Errorf("failed to get active apps for %s: %w", env, err)
-				}
-
-				if len(activeApps) == 0 {
-					logger.Info("No active apps to suspend on %s", env)
-					continue
-				}
+			if len(activeApps) > 0 {
+				logger.Info("Suspending apps...")
 
 				// Suspend only active apps
 				err = caller.Suspend(ctx, developerAddr, activeApps)
 				if err != nil {
-					return fmt.Errorf("failed to suspend apps on %s: %w", env, err)
+					return fmt.Errorf("failed to suspend apps: %w", err)
 				}
 
-				logger.Info("✓ Apps suspended on %s", env)
+				logger.Info("✓ Apps suspended")
 			}
 		} else {
 			// No active apps, just confirm cancellation
-			logger.Warn("Canceling your subscription will prevent you from deploying new apps.")
+			logger.Warn("Canceling your subscription on %s will prevent you from deploying new apps.", envName)
 			confirmed, err := output.Confirm("Are you sure you want to cancel your subscription?")
 			if err != nil {
 				return fmt.Errorf("failed to get confirmation: %w", err)
@@ -129,7 +110,7 @@ var CancelCommand = &cli.Command{
 			return fmt.Errorf("failed to cancel subscription: %w", err)
 		}
 
-		logger.Info("\n✓ Subscription canceled successfully.")
+		logger.Info("\n✓ Subscription canceled successfully for %s.", envName)
 		return nil
 	},
 }
