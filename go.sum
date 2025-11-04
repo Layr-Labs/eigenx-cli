@@ -13,6 +13,10 @@ github.com/Layr-Labs/eigenx-contracts v0.0.0-20250929214419-f0d751f5c9bc h1:sVrs
 github.com/Layr-Labs/eigenx-contracts v0.0.0-20250929214419-f0d751f5c9bc/go.mod h1:fcLQZBQ4RpTXv3Kz4cO/raRxKrfWUC+r8hSB94pSKFc=
 github.com/Layr-Labs/eigenx-kms v0.0.0-20250929214127-72a46e110b30 h1:JoqFUpny7myDIg8Wf2ymzTpkB+WMCJIMtl7S9DOpPtU=
 github.com/Layr-Labs/eigenx-kms v0.0.0-20250929214127-72a46e110b30/go.mod h1:Wi6n3O6+6iJWHQBr0ax901sz+BQsCSc9lM+Bs5yrN6A=
+github.com/Layr-Labs/eigenx-kms v0.0.0-20251021053316-00feddf36619 h1:2w1MyEjorYagro7BveY19RTKT5VrlU/gwetk/IPdGOo=
+github.com/Layr-Labs/eigenx-kms v0.0.0-20251021053316-00feddf36619/go.mod h1:agx35Dgd/F5CTomXHMbYucTT0QZpHLZGad3tyELLYkg=
+github.com/Layr-Labs/eigenx-kms v0.0.0-20251101091130-b725a6aaa815 h1:15orI7ix2DynHOLiZTXNVPpiqC6XLgbNnwybLApRaFs=
+github.com/Layr-Labs/eigenx-kms v0.0.0-20251101091130-b725a6aaa815/go.mod h1:agx35Dgd/F5CTomXHMbYucTT0QZpHLZGad3tyELLYkg=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 h1:+vx7roKuyA63nhn5WAunQHLTznkw5W8b1Xc0dNjp83s=

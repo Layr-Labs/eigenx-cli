@@ -5,9 +5,8 @@ echo "compute-source-env.sh: Running setup script..."
 echo "Fetching secrets from KMS..."
 if /usr/local/bin/kms-client \
   --kms-server-url "{{.KMSServerURL}}" \
-  --jwt-file "{{.JWTFile}}" \
-  --kms-encryption-key-file /usr/local/bin/kms-encryption-public-key.pem \
   --kms-signing-key-file /usr/local/bin/kms-signing-public-key.pem \
+  --userapi-url "{{.UserAPIURL}}" \
   --output /tmp/.env; then
     echo "compute-source-env.sh: Successfully fetched environment variables from KMS"
     set -a && . /tmp/.env && set +a

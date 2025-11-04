@@ -269,11 +269,11 @@ func PrintAppInfoWithStatus(ctx context.Context, logger iface.Logger, client *et
 	logger.Info("IP: %s", info.Ip)
 
 	// Display addresses if available
-	if len(info.Addresses.Data.EVMAddresses) > 0 {
-		printEVMAddresses(logger, info.Addresses.Data.EVMAddresses)
+	if len(info.EVMAddresses) > 0 {
+		printEVMAddresses(logger, info.EVMAddresses)
 	}
-	if len(info.Addresses.Data.SolanaAddresses) > 0 {
-		printSolanaAddresses(logger, info.Addresses.Data.SolanaAddresses)
+	if len(info.SolanaAddresses) > 0 {
+		printSolanaAddresses(logger, info.SolanaAddresses)
 	}
 
 	fmt.Println()
