@@ -17,6 +17,21 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// SubscriptionStatus represents the state of a user's subscription
+type SubscriptionStatus string
+
+const (
+	StatusIncomplete        SubscriptionStatus = "incomplete"
+	StatusIncompleteExpired SubscriptionStatus = "incomplete_expired"
+	StatusTrialing          SubscriptionStatus = "trialing"
+	StatusActive            SubscriptionStatus = "active"
+	StatusPastDue           SubscriptionStatus = "past_due"
+	StatusCanceled          SubscriptionStatus = "canceled"
+	StatusUnpaid            SubscriptionStatus = "unpaid"
+	StatusPaused            SubscriptionStatus = "paused"
+	StatusInactive          SubscriptionStatus = "inactive"
+)
+
 const MAX_ADDRESS_COUNT = 5
 
 type AppStatusResponse struct {
@@ -40,6 +55,28 @@ type InstanceType struct {
 
 type SKUListResponse struct {
 	SKUs []InstanceType `json:"skus"`
+}
+
+type CheckoutSessionResponse struct {
+	CheckoutURL string `json:"checkout_url"`
+}
+
+type UpcomingInvoice struct {
+	Amount      float64 `json:"amount"`
+	Date        int64   `json:"date"`
+	Description string  `json:"description"`
+}
+
+type UserSubscriptionResponse struct {
+	Status             SubscriptionStatus `json:"status"`
+	CurrentPeriodStart *int64             `json:"current_period_start,omitempty"`
+	CurrentPeriodEnd   *int64             `json:"current_period_end,omitempty"`
+	PlanPrice          *float64           `json:"plan_price,omitempty"`
+	Currency           *string            `json:"currency,omitempty"`
+	UpcomingInvoice    *UpcomingInvoice   `json:"upcoming_invoice,omitempty"`
+	CancelAtPeriodEnd  *bool              `json:"cancel_at_period_end,omitempty"`
+	CanceledAt         *int64             `json:"canceled_at,omitempty"`
+	PortalURL          *string            `json:"portal_url,omitempty"`
 }
 
 type RawAppInfo struct {
@@ -213,6 +250,64 @@ func (cc *UserApiClient) GetSKUs(cCtx *cli.Context) (*SKUListResponse, error) {
 	}
 
 	return &result, nil
+}
+
+func (cc *UserApiClient) CreateCheckoutSession(cCtx *cli.Context) (*CheckoutSessionResponse, error) {
+	endpoint := fmt.Sprintf("%s/subscription", cc.environmentConfig.UserApiServerURL)
+
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "POST", endpoint, &common.CanManageBillingPermission)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleErrorResponse(resp)
+	}
+
+	var result CheckoutSessionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (cc *UserApiClient) GetUserSubscription(cCtx *cli.Context) (*UserSubscriptionResponse, error) {
+	endpoint := fmt.Sprintf("%s/subscription", cc.environmentConfig.UserApiServerURL)
+
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", endpoint, &common.CanManageBillingPermission)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleErrorResponse(resp)
+	}
+
+	var result UserSubscriptionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func (cc *UserApiClient) CancelSubscription(cCtx *cli.Context) error {
+	endpoint := fmt.Sprintf("%s/subscription", cc.environmentConfig.UserApiServerURL)
+
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "DELETE", endpoint, &common.CanManageBillingPermission)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return handleErrorResponse(resp)
+	}
+
+	return nil
 }
 
 // buildAppIDsParam creates a comma-separated string of app IDs for URL parameters

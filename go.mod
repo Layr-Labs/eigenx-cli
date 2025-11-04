@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.5
 
 require (
-	github.com/Layr-Labs/eigenx-contracts v0.0.0-20250929214419-f0d751f5c9bc
+	github.com/Layr-Labs/eigenx-contracts v0.0.0-20251024194654-82395e726316
 	github.com/Layr-Labs/eigenx-kms v0.0.0-20251101091130-b725a6aaa815
 	github.com/fatih/color v1.16.0
 	github.com/google/go-containerregistry v0.20.6
@@ -90,6 +90,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
