@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Layr-Labs/eigenx-cli/pkg/common"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common/logger"
 )
 
@@ -69,26 +70,9 @@ func (f *GitFetcher) FetchSubdirectory(ctx context.Context, repoURL, ref, subPat
 	}
 
 	// Create temporary directory for sparse clone
-	// First try the system temp directory
-	tempDir, err := os.MkdirTemp(os.TempDir(), "eigenx-template-*")
+	tempDir, err := common.CreateTempDir("eigenx-template-*")
 	if err != nil {
-		// If that fails, try `~/.eigenx/tmp`
-		homeDir, homeErr := os.UserHomeDir()
-		if homeErr != nil {
-			return fmt.Errorf("failed to create temp directory and couldn't find home dir: %w (home error: %v)", err, homeErr)
-		}
-
-		// Create the fallback directory if it doesn't exist
-		fallbackBase := filepath.Join(homeDir, ".eigenx", "tmp")
-		if mkErr := os.MkdirAll(fallbackBase, 0755); mkErr != nil {
-			return fmt.Errorf("failed to create temp directory in system temp (%w) and fallback location (%v)", err, mkErr)
-		}
-
-		// Create temp directory in fallback location
-		tempDir, err = os.MkdirTemp(fallbackBase, "eigenx-template-*")
-		if err != nil {
-			return fmt.Errorf("failed to create temp directory in both system temp and fallback location: %w", err)
-		}
+		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
 	defer os.RemoveAll(tempDir)
 
