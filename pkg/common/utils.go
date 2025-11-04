@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -213,4 +214,30 @@ func FormatETH(weiAmount *big.Int) string {
 		return "<0.000001"
 	}
 	return trimmed
+}
+
+// CreateTempDir creates a temporary directory with fallback to ~/.eigenx/tmp if system temp fails
+func CreateTempDir(prefix string) (string, error) {
+	// First try the system temp directory
+	tempDir, err := os.MkdirTemp(os.TempDir(), prefix)
+	if err != nil {
+		// If that fails, try `~/.eigenx/tmp`
+		homeDir, homeErr := os.UserHomeDir()
+		if homeErr != nil {
+			return "", fmt.Errorf("failed to create temp directory and couldn't find home dir: %w (home error: %v)", err, homeErr)
+		}
+
+		// Create the fallback directory if it doesn't exist
+		fallbackBase := filepath.Join(homeDir, ".eigenx", "tmp")
+		if mkErr := os.MkdirAll(fallbackBase, 0755); mkErr != nil {
+			return "", fmt.Errorf("failed to create temp directory in system temp (%w) and fallback location (%v)", err, mkErr)
+		}
+
+		// Create temp directory in fallback location
+		tempDir, err = os.MkdirTemp(fallbackBase, prefix)
+		if err != nil {
+			return "", fmt.Errorf("failed to create temp directory in both system temp and fallback location: %w", err)
+		}
+	}
+	return tempDir, nil
 }
