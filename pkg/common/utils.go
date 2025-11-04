@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -227,7 +228,7 @@ func CreateTempDir(prefix string) (string, error) {
 		}
 
 		// Create the fallback directory if it doesn't exist
-		fallbackBase := fmt.Sprintf("%s/.eigenx/tmp", homeDir)
+		fallbackBase := filepath.Join(homeDir, ".eigenx", "tmp")
 		if mkErr := os.MkdirAll(fallbackBase, 0755); mkErr != nil {
 			return "", fmt.Errorf("failed to create temp directory in system temp (%w) and fallback location (%v)", err, mkErr)
 		}
