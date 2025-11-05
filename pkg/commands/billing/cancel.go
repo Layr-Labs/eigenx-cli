@@ -26,6 +26,11 @@ var CancelCommand = &cli.Command{
 		}
 		envName := environmentConfig.Name
 
+		// Check authentication early to provide clear error message
+		if _, err := utils.GetPrivateKeyOrFail(cCtx); err != nil {
+			return err
+		}
+
 		// Get API client
 		apiClient, err := utils.NewUserApiClient(cCtx)
 		if err != nil {
