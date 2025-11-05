@@ -30,6 +30,8 @@ temp_external/
 
 # Environment
 .env
+.env.*
+!.env.example
 
 # Language-specific build outputs
 # Node.js
@@ -40,6 +42,7 @@ yarn-error.log*
 *.tgz
 dist/
 build/
+coverage/
 
 # Python
 __pycache__/
@@ -65,6 +68,11 @@ wheels/
 .tox/
 .coverage
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+env/
+venv/
 
 # Rust
 target/
@@ -73,3 +81,6 @@ Cargo.lock
 # Go
 *.test
 *.prof
+
+# Misc
+*.log
