@@ -29,11 +29,6 @@ var CreateCommand = &cli.Command{
 	Action: createAction,
 }
 
-const (
-	envVarUseLocalTemplates = "EIGENX_USE_LOCAL_TEMPLATES"
-	envVarTemplatesPath     = "EIGENX_TEMPLATES_PATH"
-)
-
 var (
 	primaryLanguages = []string{"typescript", "golang", "rust", "python"}
 
@@ -169,8 +164,8 @@ func gatherProjectConfig(cCtx *cli.Context) (*projectConfig, error) {
 
 func populateProjectFromTemplate(cCtx *cli.Context, cfg *projectConfig) error {
 	// Handle local templates for development
-	if os.Getenv(envVarUseLocalTemplates) == "true" {
-		eigenxTemplatesPath := os.Getenv(envVarTemplatesPath)
+	if os.Getenv(template.EnvVarUseLocalTemplates) == "true" {
+		eigenxTemplatesPath := os.Getenv(template.EnvVarTemplatesPath)
 		if eigenxTemplatesPath == "" {
 			// Look for eigenx-templates as a sibling directory
 			for _, path := range []string{"eigenx-templates", "../eigenx-templates"} {
@@ -180,7 +175,7 @@ func populateProjectFromTemplate(cCtx *cli.Context, cfg *projectConfig) error {
 				}
 			}
 			if eigenxTemplatesPath == "" {
-				return fmt.Errorf("cannot find eigenx-templates directory. Set EIGENX_TEMPLATES_PATH or ensure eigenx-templates is a sibling directory")
+				return fmt.Errorf("cannot find eigenx-templates directory. Set %s or ensure eigenx-templates is a sibling directory", template.EnvVarTemplatesPath)
 			}
 		}
 

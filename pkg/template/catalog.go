@@ -12,6 +12,10 @@ import (
 )
 
 const (
+	// Environment variable names
+	EnvVarUseLocalTemplates = "EIGENX_USE_LOCAL_TEMPLATES"
+	EnvVarTemplatesPath     = "EIGENX_TEMPLATES_PATH"
+
 	// Default repository URL for templates
 	DefaultTemplateRepo = "https://github.com/Layr-Labs/eigenx-templates"
 
@@ -118,7 +122,7 @@ var cache = &catalogCache{}
 // If EIGENX_USE_LOCAL_TEMPLATES is set, it looks for a local templates.json file
 func FetchTemplateCatalog() (*TemplateCatalog, error) {
 	// Check if using local templates
-	if os.Getenv("EIGENX_USE_LOCAL_TEMPLATES") == "true" {
+	if os.Getenv(EnvVarUseLocalTemplates) == "true" {
 		return fetchLocalCatalog()
 	}
 
@@ -177,7 +181,7 @@ func fetchRemoteCatalog(url string) (*TemplateCatalog, error) {
 // fetchLocalCatalog looks for a local templates.json file
 func fetchLocalCatalog() (*TemplateCatalog, error) {
 	// Look for EIGENX_TEMPLATES_PATH first
-	templatesPath := os.Getenv("EIGENX_TEMPLATES_PATH")
+	templatesPath := os.Getenv(EnvVarTemplatesPath)
 	if templatesPath == "" {
 		// Look for eigenx-templates directory as a sibling
 		cwd, err := os.Getwd()
