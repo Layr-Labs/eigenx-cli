@@ -6,7 +6,7 @@ EigenX lets you deploy containerized applications that run in secure, verifiable
 
 ## Prerequisites
 
-- **Billing Account** - Required to create apps. Use existing address with `eigenx auth login` or generate with `eigenx auth generate`, then set up billing with `eigenx billing subscribe`.
+- **Allowlisted Account** - Required to create apps. Use existing address with `eigenx auth login` or generate with `eigenx auth generate`. Submit an onboarding request [here](https://onboarding.eigencloud.xyz).
 - **Docker** - To package and publish application images ([Download](https://www.docker.com/get-started/))
 - **Sepolia ETH** - For deployment transactions ([Google Cloud Faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) | [Alchemy Faucet](https://sepoliafaucet.com/))
 
