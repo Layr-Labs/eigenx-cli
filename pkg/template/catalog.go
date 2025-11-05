@@ -38,6 +38,34 @@ type TemplateCatalog struct {
 	raw       map[string]interface{}
 }
 
+// UnmarshalJSON implements custom JSON unmarshaling to handle nested structure
+func (tc *TemplateCatalog) UnmarshalJSON(data []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	tc.raw = raw
+	tc.Languages = make(map[string]map[string]TemplateEntry)
+
+	for language, value := range raw {
+		// Re-marshal and unmarshal to convert to map[string]TemplateEntry
+		languageData, err := json.Marshal(value)
+		if err != nil {
+			continue
+		}
+
+		var templates map[string]TemplateEntry
+		if err := json.Unmarshal(languageData, &templates); err != nil {
+			continue
+		}
+
+		tc.Languages[language] = templates
+	}
+
+	return nil
+}
+
 // GetTemplate finds a template by language and category
 func (tc *TemplateCatalog) GetTemplate(category, language string) (*TemplateEntry, error) {
 	templates, exists := tc.Languages[language]
