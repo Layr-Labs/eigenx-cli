@@ -67,7 +67,7 @@ jobs:
       - name: Run eigenx app create
         run: |
           cd /tmp
-          eigenx app create --disable-telemetry my-awesome-app ts
+          eigenx app create --disable-telemetry my-awesome-app ts minimal
 
       - name: Verify app project created
         run: |
