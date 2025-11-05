@@ -38,7 +38,7 @@ type TemplateCatalog struct {
 	raw       map[string]interface{}
 }
 
-// UnmarshalJSON implements custom JSON unmarshaling to handle nested structure
+// UnmarshalJSON implements custom JSON unmarshalling to handle nested structure
 func (tc *TemplateCatalog) UnmarshalJSON(data []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(data, &raw); err != nil {
