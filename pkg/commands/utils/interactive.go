@@ -42,9 +42,7 @@ func SelectTemplateInteractive(language string) (string, error) {
 
 	// Build display options: "category: description"
 	var options []string
-	var categories []string
 	for category, description := range categoryDescriptions {
-		categories = append(categories, category)
 		if description != "" {
 			options = append(options, fmt.Sprintf("%s: %s", category, description))
 		} else {
