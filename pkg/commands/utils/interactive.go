@@ -2,9 +2,11 @@ package utils
 
 import (
 	"fmt"
+	"maps"
 	"math/big"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -40,9 +42,13 @@ func SelectTemplateInteractive(language string) (string, error) {
 		return "", fmt.Errorf("no templates found for language %s", language)
 	}
 
-	// Build display options: "category: description"
+	// Sort categories alphabetically for consistent ordering
+	categories := slices.Sorted(maps.Keys(categoryDescriptions))
+
+	// Build display options in sorted order: "category: description"
 	var options []string
-	for category, description := range categoryDescriptions {
+	for _, category := range categories {
+		description := categoryDescriptions[category]
 		if description != "" {
 			options = append(options, fmt.Sprintf("%s: %s", category, description))
 		} else {
