@@ -298,7 +298,7 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 		case "stop":
 			return status == common.ContractAppStatusStarted || exitedApps[addr.Hex()]
 		default:
-			return status != common.ContractAppStatusTerminated
+			return status != common.ContractAppStatusTerminated && status != common.ContractAppStatusSuspended
 		}
 	}
 
