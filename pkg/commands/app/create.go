@@ -6,10 +6,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/Layr-Labs/eigenx-cli/config"
+	"github.com/Layr-Labs/eigenx-cli/pkg/commands/utils"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common/logger"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common/output"
@@ -20,82 +20,172 @@ import (
 var CreateCommand = &cli.Command{
 	Name:      "create",
 	Usage:     "Create new app project from template",
-	ArgsUsage: "[name] [language]",
+	ArgsUsage: "[name] [language] [template-name]",
 	Flags: append(common.GlobalFlags, []cli.Flag{
-		common.TemplateFlag,
+		common.TemplateRepoFlag,
 		common.TemplateVersionFlag,
 	}...),
 	Action: createAction,
 }
 
-// Language configuration
-var primaryLanguages = []string{"typescript", "golang", "rust", "python"}
+var (
+	primaryLanguages = []string{"typescript", "golang", "rust", "python"}
 
-var shortNames = map[string]string{
-	"ts": "typescript",
-	"go": "golang",
-	"rs": "rust",
-	"py": "python",
-}
+	shortNames = map[string]string{
+		"ts": "typescript",
+		"go": "golang",
+		"rs": "rust",
+		"py": "python",
+	}
+)
 
-var languageFiles = map[string][]string{
-	"typescript": {"package.json"},
-	"rust":       {"Cargo.toml", "Dockerfile"},
-	"golang":     {"go.mod"},
+type projectConfig struct {
+	name          string
+	language      string
+	templateName  string
+	templateEntry *template.TemplateEntry
+	repoURL       string
+	ref           string
+	subPath       string
 }
 
 func createAction(cCtx *cli.Context) error {
+	cfg, err := gatherProjectConfig(cCtx)
+	if err != nil {
+		return err
+	}
+
+	// Check if directory exists
+	if _, err := os.Stat(cfg.name); err == nil {
+		return fmt.Errorf("directory %s already exists", cfg.name)
+	}
+
+	// Create project directory
+	if err := os.MkdirAll(cfg.name, 0755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", cfg.name, err)
+	}
+
+	if err := populateProjectFromTemplate(cCtx, cfg); err != nil {
+		os.RemoveAll(cfg.name)
+		return err
+	}
+
+	if cfg.subPath != "" {
+		if err := postProcessTemplate(cfg.name, cfg.language, cfg.templateEntry); err != nil {
+			return fmt.Errorf("failed to post-process template: %w", err)
+		}
+	}
+
+	fmt.Printf("Successfully created %s project: %s\n", cfg.language, cfg.name)
+	return nil
+}
+
+func gatherProjectConfig(cCtx *cli.Context) (*projectConfig, error) {
+	cfg := &projectConfig{}
+
 	// Get project name
 	name := cCtx.Args().First()
 	if name == "" {
 		var err error
 		name, err = output.InputString("Enter project name:", "", "", validateProjectName)
 		if err != nil {
-			return fmt.Errorf("failed to get project name: %w", err)
+			return nil, fmt.Errorf("failed to get project name: %w", err)
 		}
 	}
+	cfg.name = name
 
-	// Check if directory exists
-	if _, err := os.Stat(name); err == nil {
-		return fmt.Errorf("directory %s already exists", name)
+	// Handle custom template repo
+	customTemplateRepo := cCtx.String(common.TemplateRepoFlag.Name)
+	if customTemplateRepo != "" {
+		cfg.repoURL = customTemplateRepo
+		cfg.ref = cCtx.String(common.TemplateVersionFlag.Name)
+		if cfg.ref == "" {
+			cfg.ref = "main"
+		}
+		return cfg, nil
 	}
 
-	// Get language - only needed for built-in templates
-	var language string
-	if cCtx.String(common.TemplateFlag.Name) == "" {
-		language = cCtx.Args().Get(1)
-		if language == "" {
-			var err error
-			language, err = output.SelectString("Select language:", primaryLanguages)
-			if err != nil {
-				return fmt.Errorf("failed to select language: %w", err)
-			}
-		} else {
-			// Resolve short names to full names
-			if fullName, exists := shortNames[language]; exists {
-				language = fullName
-			}
-
-			// Validate language is supported
-			supported := slices.Contains(primaryLanguages, language)
-			if !supported {
-				return fmt.Errorf("unsupported language: %s", language)
-			}
+	// Handle built-in templates
+	language := cCtx.Args().Get(1)
+	if language == "" {
+		var err error
+		language, err = output.SelectString("Select language:", primaryLanguages)
+		if err != nil {
+			return nil, fmt.Errorf("failed to select language: %w", err)
+		}
+	} else {
+		// Resolve short names to full names
+		if fullName, exists := shortNames[language]; exists {
+			language = fullName
 		}
 	}
+	cfg.language = language
 
-	// Resolve template URL and subdirectory path
-	repoURL, ref, subPath, err := resolveTemplateSource(cCtx.String(common.TemplateFlag.Name), cCtx.String(common.TemplateVersionFlag.Name), language)
+	// Get template name
+	templateName := cCtx.Args().Get(2)
+	if templateName == "" {
+		var err error
+		templateName, err = utils.SelectTemplateInteractive(language)
+		if err != nil {
+			return nil, fmt.Errorf("failed to select template: %w", err)
+		}
+	}
+	cfg.templateName = templateName
+
+	// Resolve template details from catalog
+	catalog, err := template.FetchTemplateCatalog()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to fetch template catalog: %w", err)
 	}
 
-	// Create project directory
-	if err := os.MkdirAll(name, 0755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", name, err)
+	matchedTemplate, err := catalog.GetTemplate(templateName, language)
+	if err != nil {
+		return nil, err
 	}
 
-	// Setup GitFetcher
+	cfg.templateEntry = matchedTemplate
+	cfg.repoURL = template.DefaultTemplateRepo
+	cfg.ref = template.DefaultTemplateVersion
+	if versionFlag := cCtx.String(common.TemplateVersionFlag.Name); versionFlag != "" {
+		cfg.ref = versionFlag
+	}
+	cfg.subPath = matchedTemplate.Path
+
+	return cfg, nil
+}
+
+func populateProjectFromTemplate(cCtx *cli.Context, cfg *projectConfig) error {
+	// Handle local templates for development
+	if os.Getenv(template.EnvVarUseLocalTemplates) == "true" {
+		eigenxTemplatesPath := os.Getenv(template.EnvVarTemplatesPath)
+		if eigenxTemplatesPath == "" {
+			// Look for eigenx-templates as a sibling directory
+			for _, path := range []string{"eigenx-templates", "../eigenx-templates"} {
+				if _, err := os.Stat(filepath.Join(path, "templates")); err == nil {
+					eigenxTemplatesPath = path
+					break
+				}
+			}
+			if eigenxTemplatesPath == "" {
+				return fmt.Errorf("cannot find eigenx-templates directory. Set %s or ensure eigenx-templates is a sibling directory", template.EnvVarTemplatesPath)
+			}
+		}
+
+		localTemplatePath := filepath.Join(eigenxTemplatesPath, cfg.subPath)
+		if _, err := os.Stat(localTemplatePath); os.IsNotExist(err) {
+			return fmt.Errorf("local template not found at %s", localTemplatePath)
+		}
+
+		if err := copyDir(localTemplatePath, cfg.name); err != nil {
+			return fmt.Errorf("failed to copy local template: %w", err)
+		}
+
+		contextLogger := common.LoggerFromContext(cCtx)
+		contextLogger.Info("Using local template from %s", localTemplatePath)
+		return nil
+	}
+
+	// Fetch from remote repository
 	contextLogger := common.LoggerFromContext(cCtx)
 	tracker := common.ProgressTrackerFromContext(cCtx.Context)
 
@@ -107,148 +197,56 @@ func createAction(cCtx *cli.Context) error {
 		Logger: *logger.NewProgressLogger(contextLogger, tracker),
 	}
 
-	// Check if we should use local templates (for development)
-	if os.Getenv("EIGENX_USE_LOCAL_TEMPLATES") == "true" {
-		// First try EIGENX_TEMPLATES_PATH env var, then look for the eigenx-templates directory as a sibling directory
-		eigenxTemplatesPath := os.Getenv("EIGENX_TEMPLATES_PATH")
-		if eigenxTemplatesPath == "" {
-			// Look for eigenx-templates as a sibling directory
-			for _, path := range []string{"eigenx-templates", "../eigenx-templates"} {
-				if _, err := os.Stat(filepath.Join(path, "templates/minimal")); err == nil {
-					eigenxTemplatesPath = path
-					break
-				}
-			}
-			if eigenxTemplatesPath == "" {
-				return fmt.Errorf("cannot find eigenx-templates directory. Set EIGENX_TEMPLATES_PATH or ensure eigenx-templates is a sibling directory")
-			}
-		}
-
-		// Use local templates from the eigenx-templates repository
-		localTemplatePath := filepath.Join(eigenxTemplatesPath, "templates/minimal", language)
-		if _, err := os.Stat(localTemplatePath); os.IsNotExist(err) {
-			return fmt.Errorf("local template not found at %s", localTemplatePath)
-		}
-
-		// Copy local template to project directory
-		err = copyDir(localTemplatePath, name)
-		if err != nil {
-			os.RemoveAll(name)
-			return fmt.Errorf("failed to copy local template: %w", err)
-		}
-		contextLogger.Info("Using local template from %s", localTemplatePath)
+	var err error
+	if cfg.subPath != "" {
+		err = fetcher.FetchSubdirectory(context.Background(), cfg.repoURL, cfg.ref, cfg.subPath, cfg.name)
 	} else {
-		if subPath != "" {
-			// Fetch only the subdirectory, if one is specified
-			err = fetcher.FetchSubdirectory(context.Background(), repoURL, ref, subPath, name)
-		} else {
-			// Fetch the full repository
-			err = fetcher.Fetch(context.Background(), repoURL, ref, name)
-		}
-		if err != nil {
-			// Cleanup on failure
-			os.RemoveAll(name)
-			return fmt.Errorf("failed to create project from template: %w", err)
-		}
+		err = fetcher.Fetch(context.Background(), cfg.repoURL, cfg.ref, cfg.name)
 	}
 
-	// Post-process only internal templates
-	if subPath != "" {
-		if err := postProcessTemplate(name, language); err != nil {
-			return fmt.Errorf("failed to post-process template: %w", err)
-		}
+	if err != nil {
+		return fmt.Errorf("failed to create project from template: %w", err)
 	}
 
-	fmt.Printf("Successfully created %s project: %s\n", language, name)
 	return nil
 }
 
-// validateProjectName validates that a project name is valid
-func validateProjectName(name string) error {
-	if name == "" {
-		return fmt.Errorf("project name cannot be empty")
-	}
-	if strings.Contains(name, " ") {
-		return fmt.Errorf("project name cannot contain spaces")
-	}
-	return nil
-}
-
-// resolveTemplateSource determines the repository URL, ref, and subdirectory path for a template
-func resolveTemplateSource(templateFlag, templateVersionFlag, language string) (string, string, string, error) {
-	if templateFlag != "" {
-		// Custom template URL provided via --template flag
-		ref := templateVersionFlag
-		if ref == "" {
-			ref = "main"
-		}
-		return templateFlag, ref, "", nil
-	}
-
-	// Use template configuration system for defaults
-	config, err := template.LoadConfig()
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to load template config: %w", err)
-	}
-
-	// Get template URL and version from config for "tee" framework
-	templateURL, version, err := template.GetTemplateURLs(config, "tee", language)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get template URLs: %w", err)
-	}
-
-	// Override version if --template-version flag provided
-	ref := version
-	if templateVersionFlag != "" {
-		ref = templateVersionFlag
-	}
-
-	// For templates from config, assume they follow our subdirectory structure
-	subPath := fmt.Sprintf("templates/minimal/%s", language)
-	return templateURL, ref, subPath, nil
-}
-
-// postProcessTemplate updates template files with project-specific values
-func postProcessTemplate(projectDir, language string) error {
+func postProcessTemplate(projectDir, language string, templateEntry *template.TemplateEntry) error {
 	projectName := filepath.Base(projectDir)
 	templateName := fmt.Sprintf("eigenx-tee-%s-app", language)
 
-	// Copy .gitignore from config directory
 	if err := copyGitignore(projectDir); err != nil {
 		return fmt.Errorf("failed to copy .gitignore: %w", err)
 	}
 
-	// Copy shared template files (.env.example)
 	if err := copySharedTemplateFiles(projectDir); err != nil {
 		return fmt.Errorf("failed to copy shared template files: %w", err)
 	}
 
-	// Update README.md title for all languages
-	if err := updateProjectFile(projectDir, "README.md", templateName, projectName); err != nil {
-		return err
+	// Get files to update from template metadata, fallback to just README.md
+	filesToUpdate := templateEntry.PostProcess.ReplaceNameIn
+	if len(filesToUpdate) == 0 {
+		filesToUpdate = []string{"README.md"}
 	}
 
-	// Update language-specific project files
-	if filenames, exists := languageFiles[language]; exists {
-		for _, filename := range filenames {
-			if err := updateProjectFile(projectDir, filename, templateName, projectName); err != nil {
-				return err
-			}
+	// Update all files specified in template metadata
+	for _, filename := range filesToUpdate {
+		if err := updateProjectFile(projectDir, filename, templateName, projectName); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-// copySharedTemplateFiles copies shared template files to the project directory
 func copySharedTemplateFiles(projectDir string) error {
-	// Write .env.example from embedded string
+	// Write .env.example
 	envPath := filepath.Join(projectDir, ".env.example")
 	if err := os.WriteFile(envPath, []byte(config.EnvExample), 0644); err != nil {
 		return fmt.Errorf("failed to write .env.example: %w", err)
 	}
 
-	// Write or append README.md from embedded string
+	// Write or append README.md
 	readmePath := filepath.Join(projectDir, "README.md")
 	if _, err := os.Stat(readmePath); err == nil {
 		// README.md exists, append the content
@@ -258,7 +256,6 @@ func copySharedTemplateFiles(projectDir string) error {
 		}
 		defer file.Close()
 
-		// Add newline before appending
 		if _, err := file.WriteString("\n" + config.ReadMe); err != nil {
 			return fmt.Errorf("failed to append to README.md: %w", err)
 		}
@@ -272,54 +269,54 @@ func copySharedTemplateFiles(projectDir string) error {
 	return nil
 }
 
-// copyGitignore copies the .gitignore from embedded config to the project directory if it doesn't exist
 func copyGitignore(projectDir string) error {
 	destPath := filepath.Join(projectDir, ".gitignore")
 
-	// Check if .gitignore already exists
+	// Skip if .gitignore already exists
 	if _, err := os.Stat(destPath); err == nil {
-		return nil // File already exists, skip copying
+		return nil
 	}
 
-	// Use embedded config .gitignore
-	err := os.WriteFile(destPath, []byte(config.GitIgnore), 0644)
-	if err != nil {
+	if err := os.WriteFile(destPath, []byte(config.GitIgnore), 0644); err != nil {
 		return fmt.Errorf("failed to write .gitignore: %w", err)
 	}
 
 	return nil
 }
 
-// updateProjectFile updates a project file by replacing a specific string
 func updateProjectFile(projectDir, filename, oldString, newString string) error {
 	filePath := filepath.Join(projectDir, filename)
 
-	// Read current file
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read %s: %w", filename, err)
 	}
 
-	// Replace the specified string
 	newContent := strings.ReplaceAll(string(content), oldString, newString)
 
-	// Write back to file
-	err = os.WriteFile(filePath, []byte(newContent), 0644)
-	if err != nil {
+	if err := os.WriteFile(filePath, []byte(newContent), 0644); err != nil {
 		return fmt.Errorf("failed to update %s: %w", filename, err)
 	}
 
 	return nil
 }
 
-// copyDir recursively copies a directory from src to dst
+func validateProjectName(name string) error {
+	if name == "" {
+		return fmt.Errorf("project name cannot be empty")
+	}
+	if strings.Contains(name, " ") {
+		return fmt.Errorf("project name cannot contain spaces")
+	}
+	return nil
+}
+
 func copyDir(src, dst string) error {
 	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Calculate destination path
 		relPath, err := filepath.Rel(src, path)
 		if err != nil {
 			return err
@@ -327,16 +324,13 @@ func copyDir(src, dst string) error {
 		dstPath := filepath.Join(dst, relPath)
 
 		if info.IsDir() {
-			// Create directory
 			return os.MkdirAll(dstPath, info.Mode())
 		}
 
-		// Copy file
 		return copyFile(path, dstPath, info.Mode())
 	})
 }
 
-// copyFile copies a single file from src to dst
 func copyFile(src, dst string, mode os.FileMode) error {
 	srcFile, err := os.Open(src)
 	if err != nil {

@@ -44,9 +44,9 @@ var (
 		Usage:   "Path to Dockerfile",
 	}
 
-	TemplateFlag = &cli.StringFlag{
-		Name:  "template",
-		Usage: "Template repository URL",
+	TemplateRepoFlag = &cli.StringFlag{
+		Name:  "template-repo",
+		Usage: "Custom template repository URL (for non-catalog templates)",
 	}
 
 	TemplateVersionFlag = &cli.StringFlag{

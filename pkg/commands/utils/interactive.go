@@ -2,15 +2,18 @@ package utils
 
 import (
 	"fmt"
+	"maps"
 	"math/big"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common/output"
+	"github.com/Layr-Labs/eigenx-cli/pkg/template"
 	"github.com/Layr-Labs/eigenx-contracts/pkg/bindings/v1/AppController"
 	dockercommand "github.com/docker/cli/cli/command"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -23,6 +26,47 @@ type registryInfo struct {
 	URL      string
 	Username string
 	Type     string // "dockerhub", "ghcr", "gcr", "other"
+}
+
+// SelectTemplateInteractive prompts the user to select a template from the catalog
+func SelectTemplateInteractive(language string) (string, error) {
+	// Fetch the template catalog
+	catalog, err := template.FetchTemplateCatalog()
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch template catalog: %w", err)
+	}
+
+	// Get category descriptions for the selected language
+	categoryDescriptions := catalog.GetCategoryDescriptions(language)
+	if len(categoryDescriptions) == 0 {
+		return "", fmt.Errorf("no templates found for language %s", language)
+	}
+
+	// Sort categories alphabetically for consistent ordering
+	categories := slices.Sorted(maps.Keys(categoryDescriptions))
+
+	// Build display options in sorted order: "category: description"
+	var options []string
+	for _, category := range categories {
+		description := categoryDescriptions[category]
+		if description != "" {
+			options = append(options, fmt.Sprintf("%s: %s", category, description))
+		} else {
+			options = append(options, category)
+		}
+	}
+
+	// Prompt user to select
+	selected, err := output.SelectString("Select template:", options)
+	if err != nil {
+		return "", err
+	}
+
+	// Extract category from selected option (format: "category: description" or just "category")
+	category := strings.Split(selected, ":")[0]
+	category = strings.TrimSpace(category)
+
+	return category, nil
 }
 
 // SelectRegistryInteractive provides interactive selection of registry for image reference

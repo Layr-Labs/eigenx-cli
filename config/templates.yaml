@@ -1,9 +1,0 @@
-framework:
-  tee:
-    template: "https://github.com/Layr-Labs/eigenx-templates"
-    version: "main"
-    languages:
-      - typescript
-      - golang
-      - rust
-      - python
