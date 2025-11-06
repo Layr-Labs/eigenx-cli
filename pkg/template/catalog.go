@@ -33,13 +33,15 @@ const (
 type TemplateEntry struct {
 	Path        string `json:"path"`
 	Description string `json:"description"`
+	PostProcess struct {
+		ReplaceNameIn []string `json:"replaceNameIn,omitempty"`
+	} `json:"postProcess,omitempty"`
 }
 
 // TemplateCatalog represents the structure of templates.json
 // Organized by language first, then by category (e.g., "typescript" -> "minimal")
 type TemplateCatalog struct {
 	Languages map[string]map[string]TemplateEntry `json:"-"`
-	raw       map[string]interface{}
 }
 
 // UnmarshalJSON implements custom JSON unmarshalling to handle nested structure
@@ -49,19 +51,18 @@ func (tc *TemplateCatalog) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	tc.raw = raw
 	tc.Languages = make(map[string]map[string]TemplateEntry)
 
 	for language, value := range raw {
 		// Re-marshal and unmarshal to convert to map[string]TemplateEntry
 		languageData, err := json.Marshal(value)
 		if err != nil {
-			continue
+			return fmt.Errorf("failed to marshal language %q data: %w", language, err)
 		}
 
 		var templates map[string]TemplateEntry
 		if err := json.Unmarshal(languageData, &templates); err != nil {
-			continue
+			return fmt.Errorf("failed to unmarshal templates for language %q: %w", language, err)
 		}
 
 		tc.Languages[language] = templates

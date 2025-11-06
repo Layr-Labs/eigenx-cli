@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/Layr-Labs/eigenx-cli/config"
@@ -38,21 +37,16 @@ var (
 		"rs": "rust",
 		"py": "python",
 	}
-
-	languageFiles = map[string][]string{
-		"typescript": {"package.json"},
-		"rust":       {"Cargo.toml", "Dockerfile"},
-		"golang":     {"go.mod"},
-	}
 )
 
 type projectConfig struct {
-	name         string
-	language     string
-	templateName string
-	repoURL      string
-	ref          string
-	subPath      string
+	name          string
+	language      string
+	templateName  string
+	templateEntry *template.TemplateEntry
+	repoURL       string
+	ref           string
+	subPath       string
 }
 
 func createAction(cCtx *cli.Context) error {
@@ -77,7 +71,7 @@ func createAction(cCtx *cli.Context) error {
 	}
 
 	if cfg.subPath != "" {
-		if err := postProcessTemplate(cfg.name, cfg.language); err != nil {
+		if err := postProcessTemplate(cfg.name, cfg.language, cfg.templateEntry); err != nil {
 			return fmt.Errorf("failed to post-process template: %w", err)
 		}
 	}
@@ -124,9 +118,6 @@ func gatherProjectConfig(cCtx *cli.Context) (*projectConfig, error) {
 		if fullName, exists := shortNames[language]; exists {
 			language = fullName
 		}
-		if !slices.Contains(primaryLanguages, language) {
-			return nil, fmt.Errorf("unsupported language: %s", language)
-		}
 	}
 	cfg.language = language
 
@@ -152,6 +143,7 @@ func gatherProjectConfig(cCtx *cli.Context) (*projectConfig, error) {
 		return nil, err
 	}
 
+	cfg.templateEntry = matchedTemplate
 	cfg.repoURL = template.DefaultTemplateRepo
 	cfg.ref = template.DefaultTemplateVersion
 	if versionFlag := cCtx.String(common.TemplateVersionFlag.Name); versionFlag != "" {
@@ -219,7 +211,7 @@ func populateProjectFromTemplate(cCtx *cli.Context, cfg *projectConfig) error {
 	return nil
 }
 
-func postProcessTemplate(projectDir, language string) error {
+func postProcessTemplate(projectDir, language string, templateEntry *template.TemplateEntry) error {
 	projectName := filepath.Base(projectDir)
 	templateName := fmt.Sprintf("eigenx-tee-%s-app", language)
 
@@ -231,16 +223,16 @@ func postProcessTemplate(projectDir, language string) error {
 		return fmt.Errorf("failed to copy shared template files: %w", err)
 	}
 
-	if err := updateProjectFile(projectDir, "README.md", templateName, projectName); err != nil {
-		return err
+	// Get files to update from template metadata, fallback to just README.md
+	filesToUpdate := templateEntry.PostProcess.ReplaceNameIn
+	if len(filesToUpdate) == 0 {
+		filesToUpdate = []string{"README.md"}
 	}
 
-	// Update language-specific project files
-	if filenames, exists := languageFiles[language]; exists {
-		for _, filename := range filenames {
-			if err := updateProjectFile(projectDir, filename, templateName, projectName); err != nil {
-				return err
-			}
+	// Update all files specified in template metadata
+	for _, filename := range filesToUpdate {
+		if err := updateProjectFile(projectDir, filename, templateName, projectName); err != nil {
+			return err
 		}
 	}
 
