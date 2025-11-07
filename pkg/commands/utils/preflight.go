@@ -90,10 +90,10 @@ func GetPrivateKeyOrFail(cCtx *cli.Context) (string, error) {
 	}
 
 	// Check environment variable
-	if privateKey := os.Getenv("PRIVATE_KEY"); privateKey != "" {
+	if privateKey := os.Getenv(common.EigenXPrivateKeyEnvVar); privateKey != "" {
 		// Validate the key format
 		if err := common.ValidatePrivateKey(privateKey); err != nil {
-			return "", fmt.Errorf("invalid private key in PRIVATE_KEY environment variable: %w", err)
+			return "", fmt.Errorf("invalid private key in %s environment variable: %w", common.EigenXPrivateKeyEnvVar, err)
 		}
 		return privateKey, nil
 	}
@@ -113,7 +113,7 @@ func GetPrivateKeyOrFail(cCtx *cli.Context) (string, error) {
 	return "", fmt.Errorf(`private key required. Please provide it via:
   • Keyring: eigenx auth login
   • Flag: --private-key YOUR_KEY
-  • Environment: export PRIVATE_KEY=YOUR_KEY`)
+  • Environment: export EIGENX_PRIVATE_KEY=YOUR_KEY`)
 }
 
 // GetDeveloperAddress gets developer address from private key

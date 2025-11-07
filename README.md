@@ -138,7 +138,7 @@ eigenx auth logout           # Remove key
 ### 2. Environment Variable
 
 ```bash
-export PRIVATE_KEY=0x1234...
+export EIGENX_PRIVATE_KEY=0x1234...
 eigenx app deploy
 ```
 

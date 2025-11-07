@@ -28,12 +28,12 @@ func TestWhoamiCommand(t *testing.T) {
 }
 
 func TestWhoamiAction(t *testing.T) {
-	originalEnv := os.Getenv("PRIVATE_KEY")
+	originalEnv := os.Getenv(common.EigenXPrivateKeyEnvVar)
 	defer func() {
 		if originalEnv == "" {
-			os.Unsetenv("PRIVATE_KEY")
+			os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 		} else {
-			os.Setenv("PRIVATE_KEY", originalEnv)
+			os.Setenv(common.EigenXPrivateKeyEnvVar, originalEnv)
 		}
 	}()
 
@@ -41,8 +41,8 @@ func TestWhoamiAction(t *testing.T) {
 
 	t.Run("with environment variable", func(t *testing.T) {
 		testKey := "0x1234567890123456789012345678901234567890123456789012345678901234"
-		os.Setenv("PRIVATE_KEY", testKey)
-		defer os.Unsetenv("PRIVATE_KEY")
+		os.Setenv(common.EigenXPrivateKeyEnvVar, testKey)
+		defer os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 
 		app, noopLogger := testutils.CreateTestAppWithNoopLoggerAndAccess("test-app", common.GlobalFlags, func(cCtx *cli.Context) error {
 			return whoamiAction(cCtx)
@@ -60,7 +60,7 @@ func TestWhoamiAction(t *testing.T) {
 	})
 
 	t.Run("with stored credentials", func(t *testing.T) {
-		os.Unsetenv("PRIVATE_KEY")
+		os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 		mock.Clear()
 		err := mock.StorePrivateKey("sepolia", "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
 		require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestWhoamiAction(t *testing.T) {
 	})
 
 	t.Run("not authenticated", func(t *testing.T) {
-		os.Unsetenv("PRIVATE_KEY")
+		os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 		mock.Clear()
 
 		app, noopLogger := testutils.CreateTestAppWithNoopLoggerAndAccess("test-app", common.GlobalFlags, func(cCtx *cli.Context) error {
@@ -101,7 +101,7 @@ func TestWhoamiAction(t *testing.T) {
 	})
 
 	t.Run("with environment flag", func(t *testing.T) {
-		os.Unsetenv("PRIVATE_KEY")
+		os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 		mock.Clear()
 		err := mock.StorePrivateKey("sepolia", "0x2222222222222222222222222222222222222222222222222222222222222222")
 		require.NoError(t, err)

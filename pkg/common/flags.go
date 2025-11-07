@@ -13,13 +13,13 @@ var (
 	RpcUrlFlag = &cli.StringFlag{
 		Name:    "rpc-url",
 		Usage:   "RPC URL to connect to blockchain",
-		EnvVars: []string{"RPC_URL"},
+		EnvVars: []string{"EIGENX_RPC_URL"},
 	}
 
 	PrivateKeyFlag = &cli.StringFlag{
 		Name:    "private-key",
 		Usage:   "Private key for signing transactions",
-		EnvVars: []string{"PRIVATE_KEY"},
+		EnvVars: []string{EigenXPrivateKeyEnvVar},
 	}
 
 	ForceFlag = &cli.BoolFlag{

@@ -31,6 +31,7 @@ const (
 	// Environment variable names
 	MnemonicEnvVar         = "MNEMONIC"                  // Filtered out, overridden by protocol
 	EigenMachineTypeEnvVar = "EIGEN_MACHINE_TYPE_PUBLIC" // Instance type configuration
+	EigenXPrivateKeyEnvVar = "EIGENX_PRIVATE_KEY"        // Private key for authentication
 )
 
 // API permissions constants

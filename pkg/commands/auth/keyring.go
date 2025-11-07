@@ -36,7 +36,7 @@ func GetPrivateKeyWithSource(cCtx *cli.Context) (string, string, error) {
 	}
 
 	// 2. Check environment variable
-	if privateKey := os.Getenv("PRIVATE_KEY"); privateKey != "" {
+	if privateKey := os.Getenv(common.EigenXPrivateKeyEnvVar); privateKey != "" {
 		return privateKey, "environment variable", nil
 	}
 
@@ -54,7 +54,7 @@ func GetPrivateKeyWithSource(cCtx *cli.Context) (string, string, error) {
 	baseMsg := `Private key required. Please provide it via:
   • Keyring: eigenx auth login
   • Flag: --private-key YOUR_KEY
-  • Environment: export PRIVATE_KEY=YOUR_KEY`
+  • Environment: export EIGENX_PRIVATE_KEY=YOUR_KEY`
 
 	if len(keyringErrors) > 0 {
 		return "", "", fmt.Errorf("%s\n\nKeyring issues detected:\n%v", baseMsg, keyringErrors)

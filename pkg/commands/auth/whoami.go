@@ -25,7 +25,7 @@ func whoamiAction(cCtx *cli.Context) error {
 		fmt.Println("")
 		fmt.Println("To authenticate, use one of:")
 		fmt.Println("  eigenx auth login                    # Store key in keyring")
-		fmt.Println("  export PRIVATE_KEY=0x...             # Use environment variable")
+		fmt.Println("  export EIGENX_PRIVATE_KEY=0x...      # Use environment variable")
 		fmt.Println("  eigenx <command> --private-key 0x... # Use flag")
 		return nil
 	}
