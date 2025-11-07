@@ -78,6 +78,7 @@ func (r *RemoteStorage) Load(domain string) (ChainPEM, Metadata, error) {
 		return nil, Metadata{}, err
 	}
 	req.Header.Set(instanceHeader, token)
+	req.Header.Set("x-client-id", "tls-keygen")
 
 	resp, err := r.httpClient().Do(req)
 	if err != nil {
@@ -150,6 +151,7 @@ func (r *RemoteStorage) Store(domain string, chain ChainPEM) error {
 	}
 	req.Header.Set(instanceHeader, token)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-client-id", "tls-keygen")
 
 	resp, err := r.httpClient().Do(req)
 	if err != nil {

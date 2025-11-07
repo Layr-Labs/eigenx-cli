@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Layr-Labs/eigenx-cli/internal/version"
 	"github.com/Layr-Labs/eigenx-cli/pkg/common"
 	kmscrypto "github.com/Layr-Labs/eigenx-kms/pkg/crypto"
 	kmstypes "github.com/Layr-Labs/eigenx-kms/pkg/types"
@@ -325,6 +326,10 @@ func (cc *UserApiClient) makeAuthenticatedRequest(cCtx *cli.Context, method, url
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+
+	// Add x-client-id header to identify the CLI client
+	clientID := fmt.Sprintf("eigenx-cli/%s", version.GetVersion())
+	req.Header.Set("x-client-id", clientID)
 
 	// Add auth headers if permission is specified
 	if permission != nil {
