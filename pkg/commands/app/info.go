@@ -102,7 +102,7 @@ func listAction(cCtx *cli.Context) error {
 
 	userApiClient, err := utils.NewUserApiClient(cCtx)
 	if err != nil {
-		return fmt.Errorf("failed to get KMS client: %w", err)
+		return fmt.Errorf("failed to get userApi client: %w", err)
 	}
 
 	// Get environment config for context
