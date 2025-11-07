@@ -43,19 +43,19 @@ func TestListStoredKeys(t *testing.T) {
 }
 
 func TestGetPrivateKeyWithSource(t *testing.T) {
-	originalEnv := os.Getenv("PRIVATE_KEY")
+	originalEnv := os.Getenv(common.EigenXPrivateKeyEnvVar)
 	defer func() {
 		if originalEnv == "" {
-			os.Unsetenv("PRIVATE_KEY")
+			os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 		} else {
-			os.Setenv("PRIVATE_KEY", originalEnv)
+			os.Setenv(common.EigenXPrivateKeyEnvVar, originalEnv)
 		}
 	}()
 
 	mock := testutils.SetupMockKeyring(t)
 
 	t.Run("from command flag", func(t *testing.T) {
-		os.Unsetenv("PRIVATE_KEY")
+		os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 
 		app := &cli.App{
 			Flags: []cli.Flag{common.PrivateKeyFlag},
@@ -79,8 +79,8 @@ func TestGetPrivateKeyWithSource(t *testing.T) {
 
 	t.Run("from environment variable", func(t *testing.T) {
 		testKey := "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-		os.Setenv("PRIVATE_KEY", testKey)
-		defer os.Unsetenv("PRIVATE_KEY")
+		os.Setenv(common.EigenXPrivateKeyEnvVar, testKey)
+		defer os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 
 		app := &cli.App{}
 		var ctx *cli.Context
@@ -99,7 +99,7 @@ func TestGetPrivateKeyWithSource(t *testing.T) {
 	})
 
 	t.Run("from stored credentials", func(t *testing.T) {
-		os.Unsetenv("PRIVATE_KEY")
+		os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 		mock.Clear()
 		err := mock.StorePrivateKey("sepolia", "0x1111111111111111111111111111111111111111111111111111111111111111")
 		require.NoError(t, err)
@@ -124,8 +124,8 @@ func TestGetPrivateKeyWithSource(t *testing.T) {
 		flagKey := "0x1111111111111111111111111111111111111111111111111111111111111111"
 		envKey := "0x2222222222222222222222222222222222222222222222222222222222222222"
 
-		os.Setenv("PRIVATE_KEY", envKey)
-		defer os.Unsetenv("PRIVATE_KEY")
+		os.Setenv(common.EigenXPrivateKeyEnvVar, envKey)
+		defer os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 
 		app := &cli.App{
 			Flags: []cli.Flag{common.PrivateKeyFlag},
@@ -146,7 +146,7 @@ func TestGetPrivateKeyWithSource(t *testing.T) {
 	})
 
 	t.Run("no key available", func(t *testing.T) {
-		os.Unsetenv("PRIVATE_KEY")
+		os.Unsetenv(common.EigenXPrivateKeyEnvVar)
 		mock.Clear()
 
 		app := &cli.App{}
