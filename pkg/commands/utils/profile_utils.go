@@ -23,8 +23,8 @@ var (
 	ValidXHosts          = []string{"twitter.com", "www.twitter.com", "x.com", "www.x.com"}
 )
 
-// AppMetadata represents the metadata for an app
-type AppMetadata struct {
+// AppProfile represents the profile information for an app
+type AppProfile struct {
 	Name        string `json:"name"`
 	Website     string `json:"website"`
 	Description string `json:"description"`

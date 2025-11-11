@@ -34,9 +34,9 @@ eigenx app upgrade [app-name] [image] # Update deployment
 eigenx app configure tls            # Configure TLS
 ```
 
-### App Metadata
+### App Profile
 ```bash
-eigenx app metadata set [app-id]  # Set app name, website, description, social links, and icon
+eigenx app profile set [app-id]  # Set app name, website, description, social links, and icon
 ```
 
 ## TLS Configuration (Optional)

@@ -326,7 +326,7 @@ func (cc *UserApiClient) CancelSubscription(cCtx *cli.Context) error {
 	return nil
 }
 
-// UploadAppProfile uploads app profile metadata with optional image
+// UploadAppProfile uploads app profile information with optional image
 func (cc *UserApiClient) UploadAppProfile(cCtx *cli.Context, appAddress string, name string, website, description, xURL *string, imagePath string) (*AppProfileResponse, error) {
 	endpoint := fmt.Sprintf("%s/apps/%s/profile", cc.environmentConfig.UserApiServerURL, appAddress)
 

@@ -9,14 +9,14 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var MetadataCommand = &cli.Command{
-	Name:      "metadata",
-	Usage:     "Manage app metadata",
+var ProfileCommand = &cli.Command{
+	Name:      "profile",
+	Usage:     "Manage app profile",
 	ArgsUsage: "<app-id|name>",
 	Subcommands: []*cli.Command{
 		{
 			Name:      "set",
-			Usage:     "Set metadata for an app",
+			Usage:     "Set profile information for an app",
 			ArgsUsage: "<app-id|name>",
 			Flags: append(common.GlobalFlags, []cli.Flag{
 				common.EnvironmentFlag,
@@ -43,23 +43,23 @@ var MetadataCommand = &cli.Command{
 					Usage: "Path to app icon/logo image (JPG/PNG, max 4MB, square recommended, optional)",
 				},
 			}...),
-			Action: metadataSetAction,
+			Action: profileSetAction,
 		},
 	},
 }
 
-func metadataSetAction(cCtx *cli.Context) error {
+func profileSetAction(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx)
 
 	// Get app ID
-	appID, err := utils.GetAppIDInteractive(cCtx, 0, "set metadata for")
+	appID, err := utils.GetAppIDInteractive(cCtx, 0, "set profile for")
 	if err != nil {
 		return err
 	}
 
-	logger.Info("Setting metadata for app: %s", appID.Hex())
+	logger.Info("Setting profile for app: %s", appID.Hex())
 
-	// Collect metadata fields
+	// Collect profile fields
 	name, err := utils.GetAppNameInteractive(cCtx)
 	if err != nil {
 		return err
@@ -85,10 +85,10 @@ func metadataSetAction(cCtx *cli.Context) error {
 		return err
 	}
 
-	// Display metadata for confirmation
-	fmt.Println(formatMetadataForDisplay(name, website, description, xURL, imagePath))
+	// Display profile for confirmation
+	fmt.Println(formatProfileForDisplay(name, website, description, xURL, imagePath))
 
-	confirmed, err := output.Confirm("Upload this metadata?")
+	confirmed, err := output.Confirm("Upload this profile?")
 	if err != nil {
 		return fmt.Errorf("failed to get confirmation: %w", err)
 	}
@@ -97,7 +97,7 @@ func metadataSetAction(cCtx *cli.Context) error {
 	}
 
 	// Upload profile via API
-	logger.Info("Uploading app metadata...")
+	logger.Info("Uploading app profile...")
 
 	userApiClient, err := utils.NewUserApiClient(cCtx)
 	if err != nil {
@@ -110,7 +110,7 @@ func metadataSetAction(cCtx *cli.Context) error {
 	}
 
 	// Display success message with returned data
-	logger.Info("✓ Metadata updated successfully for app '%s'", response.Name)
+	logger.Info("✓ Profile updated successfully for app '%s'", response.Name)
 
 	// Show uploaded profile data
 	fmt.Println("\nUploaded Profile:")
@@ -131,9 +131,9 @@ func metadataSetAction(cCtx *cli.Context) error {
 	return nil
 }
 
-// formatMetadataForDisplay formats metadata for display to the user
-func formatMetadataForDisplay(name string, website, description, xURL *string, imagePath string) string {
-	output := "\nApp Metadata:\n"
+// formatProfileForDisplay formats profile for display to the user
+func formatProfileForDisplay(name string, website, description, xURL *string, imagePath string) string {
+	output := "\nApp Profile:\n"
 	output += fmt.Sprintf("  Name:        %s\n", name)
 
 	if website != nil && *website != "" {

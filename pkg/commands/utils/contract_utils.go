@@ -285,7 +285,7 @@ func PrintAppInfoWithStatus(ctx context.Context, logger iface.Logger, client *et
 	logger.Info("Instance: %s", info.MachineType)
 	logger.Info("IP: %s", info.Ip)
 
-	// Display profile metadata if available
+	// Display app profile if available
 	if info.Profile != nil {
 		if info.Profile.Website != nil {
 			logger.Info("Website: %s", *info.Profile.Website)

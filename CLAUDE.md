@@ -63,7 +63,7 @@ The CLI is built with `urfave/cli/v2` and organized hierarchically:
 | Command | Description |
 | --- | --- |
 | `eigenx app create [name] [language]` | Create new app project from template |
-| `eigenx app metadata set <app-id\|name>` | Set app metadata (name, website, description, X URL, image) |
+| `eigenx app profile set <app-id\|name>` | Set app profile (name, website, description, X URL, image) |
 | `eigenx app deploy [image_ref]` | Build, push, deploy to TEE |
 | `eigenx app upgrade <app-id\|name> <image_ref>` | Upgrade existing deployment |
 | `eigenx app start [app-id\|name]` | Start stopped app (start GCP instance) |
@@ -86,7 +86,7 @@ Optional parameters are requested interactively when not provided:
 
 Commands auto-detect project context when run in directory containing `Dockerfile`. Makes `name` parameter optional for: `deploy`.
 
-Commands also support app name resolution - you can use either the full app ID (0x123...) or a friendly name you've set with `eigenx app metadata set`.
+Commands also support app name resolution - you can use either the full app ID (0x123...) or a friendly name you've set with `eigenx app profile set`.
 
 ### Configuration System
 Global configuration with XDG Base Directory compliance:
