@@ -288,6 +288,9 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 	// Get API statuses for all Started apps to identify which have exited
 	exitedApps := getExitedApps(cCtx, result.Apps, result.AppConfigsMem)
 
+	// Get profile names for all apps from API (for better display in selection list)
+	profileNames := getProfileNamesForApps(cCtx, result.Apps)
+
 	// Determine which apps are eligible for the action
 	isEligible := func(status common.AppStatus, addr ethcommon.Address) bool {
 		switch action {
@@ -316,11 +319,9 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 			statusStr = "Exited"
 		}
 
-		appName := common.GetAppName(environmentConfig.Name, appAddr.Hex())
-		displayName := appAddr.Hex()
-		if appName != "" {
-			displayName = fmt.Sprintf("%s (%s)", appName, appAddr.Hex())
-		}
+		// Prioritize API profile name, fall back to local registry
+		profileName := profileNames[appAddr.Hex()]
+		displayName := common.FormatAppDisplay(environmentConfig.Name, appAddr, profileName)
 
 		appItems = append(appItems, appItem{
 			addr:    appAddr,
@@ -1024,6 +1025,104 @@ func GetEnvironmentInteractive(cCtx *cli.Context, argIndex int) (string, error) 
 	return "", fmt.Errorf("failed to find selected environment")
 }
 
+func GetAppNameInteractive(cCtx *cli.Context) (string, error) {
+	result, err := getFromFlagOrPrompt(cCtx, PromptConfig{
+		FlagName:    "name",
+		Prompt:      "App Name:",
+		Placeholder: "Display name for your app (required)",
+		Validate:    ValidateAppName,
+		Sanitize:    func(s string) (string, error) { return SanitizeString(s), nil },
+	})
+	if err != nil || result == nil {
+		return "", err
+	}
+	return *result, nil
+}
+
+func GetAppWebsiteInteractive(cCtx *cli.Context) (*string, error) {
+	return getFromFlagOrPrompt(cCtx, PromptConfig{
+		FlagName:    "website",
+		Prompt:      "Website URL (optional):",
+		Placeholder: "Your app's website (e.g., https://example.com) - press Enter to skip",
+		Validate: func(s string) error {
+			if s == "" {
+				return nil
+			}
+			_, err := SanitizeURL(s)
+			return err
+		},
+		Sanitize: SanitizeURL,
+	})
+}
+
+func GetAppDescriptionInteractive(cCtx *cli.Context) (*string, error) {
+	return getFromFlagOrPrompt(cCtx, PromptConfig{
+		FlagName:    "description",
+		Prompt:      "Description (optional):",
+		Placeholder: "Brief description of your app (max 1000 characters) - press Enter to skip",
+		Validate: func(s string) error {
+			if s == "" {
+				return nil
+			}
+			return ValidateAppDescription(s)
+		},
+		Sanitize: func(s string) (string, error) { return SanitizeString(s), nil },
+	})
+}
+
+func GetAppXURLInteractive(cCtx *cli.Context) (*string, error) {
+	return getFromFlagOrPrompt(cCtx, PromptConfig{
+		FlagName:    "x-url",
+		Prompt:      "X (Twitter) URL (optional):",
+		Placeholder: "Your X/Twitter profile (e.g., https://x.com/username or @username) - press Enter to skip",
+		Validate: func(s string) error {
+			if s == "" {
+				return nil
+			}
+			_, err := SanitizeXURL(s)
+			return err
+		},
+		Sanitize: SanitizeXURL,
+	})
+}
+
+func GetAppImageInteractive(cCtx *cli.Context) (string, error) {
+	if imageFlag := cCtx.String("image"); imageFlag != "" {
+		imgInfo, err := ValidateAndGetImageInfo(imageFlag)
+		if err != nil {
+			return "", fmt.Errorf("invalid image file: %w", err)
+		}
+		printImageInfo(imgInfo)
+		return imageFlag, nil
+	}
+
+	wantsImage, err := output.Confirm("Would you like to upload an app icon/logo?")
+	if err != nil || !wantsImage {
+		return "", nil
+	}
+
+	imageInput, err := output.InputString(
+		"Image path:",
+		"Drag & drop image file or enter path (JPG/PNG, max 4MB, square recommended)",
+		"",
+		func(path string) error {
+			if path == "" {
+				return nil
+			}
+			_, err := ValidateAndGetImageInfo(path)
+			return err
+		},
+	)
+	if err != nil || imageInput == "" {
+		return "", nil
+	}
+
+	if imgInfo, err := ValidateAndGetImageInfo(imageInput); err == nil {
+		printImageInfo(imgInfo)
+	}
+	return imageInput, nil
+}
+
 // ConfirmMainnetEnvironment shows a confirmation prompt for mainnet environments
 func ConfirmMainnetEnvironment(env string) error {
 	if !common.IsMainnetEnvironment(env) {
@@ -1045,4 +1144,65 @@ func ConfirmMainnetEnvironment(env string) error {
 	}
 
 	return nil
+}
+
+// PromptConfig contains configuration for the flag-or-prompt pattern
+type PromptConfig struct {
+	FlagName    string
+	Prompt      string
+	Placeholder string
+	Validate    func(string) error
+	Sanitize    func(string) (string, error)
+}
+
+// getFromFlagOrPrompt handles the flag-or-prompt pattern for strings
+func getFromFlagOrPrompt(cCtx *cli.Context, config PromptConfig) (*string, error) {
+	if flag := cCtx.String(config.FlagName); flag != "" {
+		sanitized, err := config.Sanitize(flag)
+		if err != nil {
+			return nil, fmt.Errorf("invalid %s: %w", config.FlagName, err)
+		}
+		return &sanitized, nil
+	}
+
+	input, err := output.InputString(config.Prompt, config.Placeholder, "", config.Validate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get %s: %w", config.FlagName, err)
+	}
+	if input == "" {
+		return nil, nil
+	}
+	sanitized, _ := config.Sanitize(input)
+	return &sanitized, nil
+}
+
+// printImageInfo prints image ratio and pixel dimensions, including a warning if the image is not square
+func printImageInfo(img *ImageInfo) {
+	fmt.Printf("📸 Image: %dx%d pixels, %.1f KB\n", img.Width, img.Height, img.SizeKB)
+	if !img.IsSquare() {
+		fmt.Printf("⚠️  Note: Image is not square (%.2f:1 ratio). Square images display best.\n", img.AspectRatio())
+	}
+}
+
+// getProfileNamesForApps fetches profile names for a list of apps from the API
+func getProfileNamesForApps(cCtx *cli.Context, apps []ethcommon.Address) map[string]string {
+	profileNames := make(map[string]string)
+
+	userApiClient, err := NewUserApiClient(cCtx)
+	if err != nil {
+		return profileNames
+	}
+
+	infos, err := userApiClient.GetInfos(cCtx, apps, 0)
+	if err != nil {
+		return profileNames
+	}
+
+	for i, info := range infos.Apps {
+		if info.Profile != nil && info.Profile.Name != "" {
+			profileNames[apps[i].Hex()] = info.Profile.Name
+		}
+	}
+
+	return profileNames
 }

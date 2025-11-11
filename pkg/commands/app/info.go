@@ -173,7 +173,8 @@ func logsAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to create API client: %w", err)
 	}
 
-	formattedApp := common.FormatAppDisplay(environmentConfig.Name, appID)
+	profileName := utils.GetAppProfileName(cCtx, appID)
+	formattedApp := common.FormatAppDisplay(environmentConfig.Name, appID, profileName)
 
 	logs, err := userApiClient.GetLogs(cCtx, appID)
 	watchMode := cCtx.Bool(common.WatchFlag.Name)

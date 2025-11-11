@@ -1,12 +1,16 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -80,11 +84,20 @@ type UserSubscriptionResponse struct {
 	PortalURL          *string            `json:"portal_url,omitempty"`
 }
 
+type AppProfileResponse struct {
+	Name        string  `json:"name"`
+	Website     *string `json:"website,omitempty"`
+	Description *string `json:"description,omitempty"`
+	XURL        *string `json:"xURL,omitempty"`
+	ImageURL    *string `json:"imageURL,omitempty"`
+}
+
 type RawAppInfo struct {
-	Addresses   json.RawMessage `json:"addresses"`
-	Status      string          `json:"app_status"`
-	Ip          string          `json:"ip"`
-	MachineType string          `json:"machine_type"`
+	Addresses   json.RawMessage     `json:"addresses"`
+	Status      string              `json:"app_status"`
+	Ip          string              `json:"ip"`
+	MachineType string              `json:"machine_type"`
+	Profile     *AppProfileResponse `json:"profile,omitempty"`
 }
 
 // AppInfo contains the app info with parsed and validated addresses
@@ -94,6 +107,7 @@ type AppInfo struct {
 	Status          string
 	Ip              string
 	MachineType     string
+	Profile         *AppProfileResponse
 }
 
 type AppInfoResponse struct {
@@ -128,7 +142,7 @@ func (cc *UserApiClient) GetStatuses(cCtx *cli.Context, appIDs []ethcommon.Addre
 
 	fullURL := fmt.Sprintf("%s?%s", endpoint, params.Encode())
 
-	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", fullURL, nil)
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", fullURL, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +173,7 @@ func (cc *UserApiClient) GetInfos(cCtx *cli.Context, appIDs []ethcommon.Address,
 
 	fullURL := fmt.Sprintf("%s?%s", endpoint, params.Encode())
 
-	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", fullURL, &common.CanViewSensitiveAppInfoPermission)
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", fullURL, nil, "", &common.CanViewSensitiveAppInfoPermission)
 	if err != nil {
 		return nil, err
 	}
@@ -205,6 +219,7 @@ func (cc *UserApiClient) GetInfos(cCtx *cli.Context, appIDs []ethcommon.Address,
 			Status:          rawApp.Status,
 			Ip:              rawApp.Ip,
 			MachineType:     rawApp.MachineType,
+			Profile:         rawApp.Profile,
 		}
 	}
 
@@ -214,7 +229,7 @@ func (cc *UserApiClient) GetInfos(cCtx *cli.Context, appIDs []ethcommon.Address,
 func (cc *UserApiClient) GetLogs(cCtx *cli.Context, appID ethcommon.Address) (string, error) {
 	endpoint := fmt.Sprintf("%s/logs/%s", cc.environmentConfig.UserApiServerURL, appID.Hex())
 
-	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", endpoint, &common.CanViewAppLogsPermission)
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", endpoint, nil, "", &common.CanViewAppLogsPermission)
 	if err != nil {
 		return "", err
 	}
@@ -235,7 +250,7 @@ func (cc *UserApiClient) GetLogs(cCtx *cli.Context, appID ethcommon.Address) (st
 func (cc *UserApiClient) GetSKUs(cCtx *cli.Context) (*SKUListResponse, error) {
 	endpoint := fmt.Sprintf("%s/skus", cc.environmentConfig.UserApiServerURL)
 
-	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", endpoint, nil)
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", endpoint, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +271,7 @@ func (cc *UserApiClient) GetSKUs(cCtx *cli.Context) (*SKUListResponse, error) {
 func (cc *UserApiClient) CreateCheckoutSession(cCtx *cli.Context) (*CheckoutSessionResponse, error) {
 	endpoint := fmt.Sprintf("%s/subscription", cc.environmentConfig.UserApiServerURL)
 
-	resp, err := cc.makeAuthenticatedRequest(cCtx, "POST", endpoint, &common.CanManageBillingPermission)
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "POST", endpoint, nil, "", &common.CanManageBillingPermission)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +292,7 @@ func (cc *UserApiClient) CreateCheckoutSession(cCtx *cli.Context) (*CheckoutSess
 func (cc *UserApiClient) GetUserSubscription(cCtx *cli.Context) (*UserSubscriptionResponse, error) {
 	endpoint := fmt.Sprintf("%s/subscription", cc.environmentConfig.UserApiServerURL)
 
-	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", endpoint, &common.CanManageBillingPermission)
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "GET", endpoint, nil, "", &common.CanManageBillingPermission)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +313,7 @@ func (cc *UserApiClient) GetUserSubscription(cCtx *cli.Context) (*UserSubscripti
 func (cc *UserApiClient) CancelSubscription(cCtx *cli.Context) error {
 	endpoint := fmt.Sprintf("%s/subscription", cc.environmentConfig.UserApiServerURL)
 
-	resp, err := cc.makeAuthenticatedRequest(cCtx, "DELETE", endpoint, &common.CanManageBillingPermission)
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "DELETE", endpoint, nil, "", &common.CanManageBillingPermission)
 	if err != nil {
 		return err
 	}
@@ -311,6 +326,82 @@ func (cc *UserApiClient) CancelSubscription(cCtx *cli.Context) error {
 	return nil
 }
 
+// UploadAppProfile uploads app profile metadata with optional image
+func (cc *UserApiClient) UploadAppProfile(cCtx *cli.Context, appAddress string, name string, website, description, xURL *string, imagePath string) (*AppProfileResponse, error) {
+	endpoint := fmt.Sprintf("%s/apps/%s/profile", cc.environmentConfig.UserApiServerURL, appAddress)
+
+	// Create multipart form body
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Add required name field
+	if err := writer.WriteField("name", name); err != nil {
+		return nil, fmt.Errorf("failed to write name field: %w", err)
+	}
+
+	// Add optional text fields
+	if website != nil && *website != "" {
+		if err := writer.WriteField("website", *website); err != nil {
+			return nil, fmt.Errorf("failed to write website field: %w", err)
+		}
+	}
+
+	if description != nil && *description != "" {
+		if err := writer.WriteField("description", *description); err != nil {
+			return nil, fmt.Errorf("failed to write description field: %w", err)
+		}
+	}
+
+	if xURL != nil && *xURL != "" {
+		if err := writer.WriteField("xURL", *xURL); err != nil {
+			return nil, fmt.Errorf("failed to write xURL field: %w", err)
+		}
+	}
+
+	// Add optional image file
+	if imagePath != "" {
+		file, err := os.Open(imagePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open image file: %w", err)
+		}
+		defer file.Close()
+
+		part, err := writer.CreateFormFile("image", filepath.Base(imagePath))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create form file: %w", err)
+		}
+
+		if _, err := io.Copy(part, file); err != nil {
+			return nil, fmt.Errorf("failed to copy image data: %w", err)
+		}
+	}
+
+	// Close the multipart writer to finalize the form
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	// Use makeAuthenticatedRequest to handle authentication
+	resp, err := cc.makeAuthenticatedRequest(cCtx, "POST", endpoint, body, writer.FormDataContentType(), &common.CanUpdateAppProfilePermission)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Check for success (201 Created or 200 OK)
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return nil, handleErrorResponse(resp)
+	}
+
+	// Parse response
+	var result AppProfileResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}
+
 // buildAppIDsParam creates a comma-separated string of app IDs for URL parameters
 func buildAppIDsParam(appIDs []ethcommon.Address) string {
 	appIDStrings := make([]string, len(appIDs))
@@ -320,9 +411,10 @@ func buildAppIDsParam(appIDs []ethcommon.Address) string {
 	return strings.Join(appIDStrings, ",")
 }
 
-// makeAuthenticatedRequest performs an HTTP request with optional authentication
-func (cc *UserApiClient) makeAuthenticatedRequest(cCtx *cli.Context, method, url string, permission *[4]byte) (*http.Response, error) {
-	req, err := http.NewRequest(method, url, nil)
+// makeAuthenticatedRequest performs an HTTP request with optional authentication and body
+// contentType parameter allows setting custom Content-Type header (e.g., for multipart forms)
+func (cc *UserApiClient) makeAuthenticatedRequest(cCtx *cli.Context, method, url string, body io.Reader, contentType string, permission *[4]byte) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -330,6 +422,11 @@ func (cc *UserApiClient) makeAuthenticatedRequest(cCtx *cli.Context, method, url
 	// Add x-client-id header to identify the CLI client
 	clientID := fmt.Sprintf("eigenx-cli/%s", version.GetVersion())
 	req.Header.Set("x-client-id", clientID)
+
+	// Set content type if provided
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
 
 	// Add auth headers if permission is specified
 	if permission != nil {

@@ -223,7 +223,7 @@ ACME_FORCE_ISSUE=true  # Only if staging cert exists
 | --- | --- |
 | `eigenx app create [name] [language]` | Create new project from template |
 | `eigenx app configure tls` | Add TLS configuration to your project |
-| `eigenx app name <app-id\|name> <new-name>` | Set a friendly name for your app |
+| `eigenx app metadata set <app-id\|name>` | Set app metadata (name, website, description, social links, icon) |
 
 ### Deployment & Updates
 

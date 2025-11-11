@@ -61,7 +61,8 @@ func startAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get app address: %w", err)
 	}
 
-	formattedApp := common.FormatAppDisplay(preflightCtx.EnvironmentConfig.Name, appID)
+	profileName := utils.GetAppProfileName(cCtx, appID)
+	formattedApp := common.FormatAppDisplay(preflightCtx.EnvironmentConfig.Name, appID, profileName)
 
 	// Call AppController.StartApp
 	err = preflightCtx.Caller.StartApp(ctx, appID)
@@ -94,7 +95,8 @@ func stopAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get app address: %w", err)
 	}
 
-	formattedApp := common.FormatAppDisplay(preflightCtx.EnvironmentConfig.Name, appID)
+	profileName := utils.GetAppProfileName(cCtx, appID)
+	formattedApp := common.FormatAppDisplay(preflightCtx.EnvironmentConfig.Name, appID, profileName)
 
 	// Call AppController.StopApp
 	err = preflightCtx.Caller.StopApp(ctx, appID)
@@ -137,7 +139,8 @@ func terminateAction(cCtx *cli.Context) error {
 		return err
 	}
 
-	logger.Info("App %s terminated successfully", common.FormatAppDisplay(preflightCtx.EnvironmentConfig.Name, appID))
+	profileName := utils.GetAppProfileName(cCtx, appID)
+	logger.Info("App %s terminated successfully", common.FormatAppDisplay(preflightCtx.EnvironmentConfig.Name, appID, profileName))
 
 	return utils.GetAndPrintAppInfo(cCtx, appID, common.AppStatusTerminating)
 }
