@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"html"
 	"image"
+	_ "image/jpeg" // Register JPEG format decoder
+	_ "image/png"  // Register PNG format decoder
 	"net/url"
 	"os"
 	"path/filepath"
@@ -105,6 +107,9 @@ func ValidateAndGetImageInfo(filePath string) (*ImageInfo, error) {
 	if strings.TrimSpace(filePath) == "" {
 		return nil, fmt.Errorf("image path cannot be empty")
 	}
+
+	// Remove quotes that may be added by terminal drag-and-drop (e.g., '/path/to/file')
+	filePath = strings.Trim(filePath, "'\"")
 
 	// Check if file exists
 	info, err := os.Stat(filePath)

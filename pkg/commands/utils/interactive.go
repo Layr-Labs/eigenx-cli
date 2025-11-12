@@ -294,7 +294,7 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 	// Determine which apps are eligible for the action
 	isEligible := func(status common.AppStatus, addr ethcommon.Address) bool {
 		switch action {
-		case "view":
+		case "view", "set profile for":
 			return true
 		case "start":
 			return status == common.ContractAppStatusStopped || status == common.ContractAppStatusSuspended || exitedApps[addr.Hex()]
