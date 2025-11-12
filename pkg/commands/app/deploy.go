@@ -20,9 +20,13 @@ var DeployCommand = &cli.Command{
 		common.PrivateKeyFlag,
 		common.EnvFlag,
 		common.FileFlag,
-		common.NameFlag,
 		common.LogVisibilityFlag,
 		common.InstanceTypeFlag,
+		common.NameFlag,
+		common.WebsiteFlag,
+		common.DescriptionFlag,
+		common.XURLFlag,
+		common.ImageFlag,
 	}...),
 	Action: deployAction,
 }
@@ -60,39 +64,32 @@ func deployAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get image reference: %w", err)
 	}
 
-	// 6. Get app name upfront (before any expensive operations)
-	environment := preflightCtx.EnvironmentConfig.Name
-	name, err := utils.GetOrPromptAppName(cCtx, environment, imageRef)
-	if err != nil {
-		return fmt.Errorf("failed to get app name: %w", err)
-	}
-
-	// 7. Get environment file configuration
+	// 6. Get environment file configuration
 	envFilePath, err := utils.GetEnvFileInteractive(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to get env file path: %w", err)
 	}
 
-	// 8. Get instance type selection (uses first from backend as default for new apps)
+	// 7. Get instance type selection (uses first from backend as default for new apps)
 	instanceType, err := utils.GetInstanceTypeInteractive(cCtx, "")
 	if err != nil {
 		return fmt.Errorf("failed to get instance: %w", err)
 	}
 
-	// 9. Get log settings from flags or interactive prompt
+	// 8. Get log settings from flags or interactive prompt
 	logRedirect, publicLogs, err := utils.GetLogSettingsInteractive(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to get log settings: %w", err)
 	}
 
-	// 10. Generate random salt
+	// 9. Generate random salt
 	salt := [32]byte{}
 	_, err = rand.Read(salt[:])
 	if err != nil {
 		return fmt.Errorf("failed to generate random salt: %w", err)
 	}
 
-	// 11. Get app ID
+	// 10. Get app ID
 	_, appController, err := utils.GetAppControllerBinding(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to get app controller binding: %w", err)
@@ -102,23 +99,47 @@ func deployAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get app id: %w", err)
 	}
 
-	// 12. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
+	// 11. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
 	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appIDToBeDeployed, dockerfilePath, imageRef, envFilePath, logRedirect, instanceType, 3)
 	if err != nil {
 		return err
 	}
 
-	// 13. Deploy the app
+	// 12. Deploy the app
 	appID, err := preflightCtx.Caller.DeployApp(cCtx.Context, salt, release, publicLogs, imageRef)
 	if err != nil {
 		return fmt.Errorf("failed to deploy app: %w", err)
 	}
 
-	// 14. Save the app name mapping
-	if err := common.SetAppName(environment, appID.Hex(), name); err != nil {
-		logger.Warn("Failed to save app name: %s", err.Error())
-	} else {
-		logger.Info("App saved with name: %s", name)
+	// 13. Collect app profile while deployment is in progress (optional)
+	environment := preflightCtx.EnvironmentConfig.Name
+	suggestedName, err := utils.ExtractAndFindAvailableName(environment, imageRef)
+	if err != nil {
+		logger.Warn("Failed to extract suggested name: %s", err.Error())
+		suggestedName = ""
+	}
+
+	logger.Info("Deployment confirmed onchain. While your instance provisions, set up a public profile")
+	profile, err := utils.GetAppProfileInteractive(cCtx, suggestedName, true)
+	if err != nil {
+		logger.Warn("Failed to collect profile: %s", err.Error())
+		profile = nil
+	}
+
+	// 14. Upload profile if provided (non-blocking - warn on failure but don't fail deployment)
+	if profile != nil {
+		logger.Info("Uploading app profile...")
+		userApiClient, err := utils.NewUserApiClient(cCtx)
+		if err != nil {
+			logger.Warn("Failed to create API client for profile upload: %s", err.Error())
+		} else {
+			_, err := userApiClient.UploadAppProfile(cCtx, appID.Hex(), profile.Name, profile.Website, profile.Description, profile.XURL, profile.ImagePath)
+			if err != nil {
+				logger.Warn("Failed to upload profile: %s", err.Error())
+			} else {
+				logger.Info("✓ Profile uploaded successfully")
+			}
+		}
 	}
 
 	// 15. Watch until deployment completes

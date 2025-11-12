@@ -65,11 +65,6 @@ var (
 		Value: 1,
 	}
 
-	NameFlag = &cli.StringFlag{
-		Name:  "name",
-		Usage: "Friendly name for the app",
-	}
-
 	LogVisibilityFlag = &cli.StringFlag{
 		Name:  "log-visibility",
 		Usage: "Log visibility setting: public, private, or off",
@@ -84,6 +79,32 @@ var (
 		Name:    "watch",
 		Aliases: []string{"w"},
 		Usage:   "Continuously fetch and display updates",
+	}
+
+	// Profile-related flags
+	NameFlag = &cli.StringFlag{
+		Name:  "name",
+		Usage: "App display name",
+	}
+
+	WebsiteFlag = &cli.StringFlag{
+		Name:  "website",
+		Usage: "App website URL (optional)",
+	}
+
+	DescriptionFlag = &cli.StringFlag{
+		Name:  "description",
+		Usage: "App description (optional)",
+	}
+
+	XURLFlag = &cli.StringFlag{
+		Name:  "x-url",
+		Usage: "X (Twitter) profile URL (optional)",
+	}
+
+	ImageFlag = &cli.StringFlag{
+		Name:  "image",
+		Usage: "Path to app icon/logo image - JPG/PNG, max 4MB, square recommended (optional)",
 	}
 )
 
