@@ -1217,38 +1217,6 @@ func GetAppProfileInteractive(cCtx *cli.Context, defaultName string, allowRetry 
 	}
 }
 
-// formatProfileForDisplay formats a profile for display to the user
-func formatProfileForDisplay(profile *CollectedProfile) string {
-	output := "\nPublic App Profile:\n"
-	output += fmt.Sprintf("  Name:        %s\n", profile.Name)
-
-	if profile.Website != nil && *profile.Website != "" {
-		output += fmt.Sprintf("  Website:     %s\n", *profile.Website)
-	} else {
-		output += "  Website:     (not provided)\n"
-	}
-
-	if profile.Description != nil && *profile.Description != "" {
-		output += fmt.Sprintf("  Description: %s\n", *profile.Description)
-	} else {
-		output += "  Description: (not provided)\n"
-	}
-
-	if profile.XURL != nil && *profile.XURL != "" {
-		output += fmt.Sprintf("  X URL:       %s\n", *profile.XURL)
-	} else {
-		output += "  X URL:       (not provided)\n"
-	}
-
-	if profile.ImagePath != "" {
-		output += fmt.Sprintf("  Image:       %s\n", profile.ImagePath)
-	} else {
-		output += "  Image:       (not provided)\n"
-	}
-
-	return output
-}
-
 // ConfirmMainnetEnvironment shows a confirmation prompt for mainnet environments
 func ConfirmMainnetEnvironment(env string) error {
 	if !common.IsMainnetEnvironment(env) {
@@ -1357,4 +1325,36 @@ func getProfileNamesForApps(cCtx *cli.Context, apps []ethcommon.Address) map[str
 		}
 	}
 	return profileNames
+}
+
+// formatProfileForDisplay formats a profile for display to the user
+func formatProfileForDisplay(profile *CollectedProfile) string {
+	output := "\nPublic App Profile:\n"
+	output += fmt.Sprintf("  Name:        %s\n", profile.Name)
+
+	if profile.Website != nil && *profile.Website != "" {
+		output += fmt.Sprintf("  Website:     %s\n", *profile.Website)
+	} else {
+		output += "  Website:     (not provided)\n"
+	}
+
+	if profile.Description != nil && *profile.Description != "" {
+		output += fmt.Sprintf("  Description: %s\n", *profile.Description)
+	} else {
+		output += "  Description: (not provided)\n"
+	}
+
+	if profile.XURL != nil && *profile.XURL != "" {
+		output += fmt.Sprintf("  X URL:       %s\n", *profile.XURL)
+	} else {
+		output += "  X URL:       (not provided)\n"
+	}
+
+	if profile.ImagePath != "" {
+		output += fmt.Sprintf("  Image:       %s\n", profile.ImagePath)
+	} else {
+		output += "  Image:       (not provided)\n"
+	}
+
+	return output
 }
