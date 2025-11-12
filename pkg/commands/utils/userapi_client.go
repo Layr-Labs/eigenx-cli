@@ -37,7 +37,10 @@ const (
 	StatusInactive          SubscriptionStatus = "inactive"
 )
 
-const MAX_ADDRESS_COUNT = 5
+const (
+	MaxAddressCount   = 5  // Max addresses to return per app
+	MaxAppsPerRequest = 10 // Max apps allowed per API request
+)
 
 type AppStatusResponse struct {
 	Apps []AppStatus `json:"apps"`
@@ -161,8 +164,8 @@ func (cc *UserApiClient) GetStatuses(cCtx *cli.Context, appIDs []ethcommon.Addre
 }
 
 func (cc *UserApiClient) GetInfos(cCtx *cli.Context, appIDs []ethcommon.Address, addressCount int) (*AppInfoResponse, error) {
-	if addressCount > MAX_ADDRESS_COUNT {
-		addressCount = MAX_ADDRESS_COUNT
+	if addressCount > MaxAddressCount {
+		addressCount = MaxAddressCount
 	}
 
 	endpoint := fmt.Sprintf("%s/info", cc.environmentConfig.UserApiServerURL)

@@ -1186,24 +1186,49 @@ func printImageInfo(img *ImageInfo) {
 }
 
 // getProfileNamesForApps fetches profile names for a list of apps from the API
+// Batches requests and executes them in parallel
 func getProfileNamesForApps(cCtx *cli.Context, apps []ethcommon.Address) map[string]string {
 	profileNames := make(map[string]string)
+	if len(apps) == 0 {
+		return profileNames
+	}
 
 	userApiClient, err := NewUserApiClient(cCtx)
 	if err != nil {
 		return profileNames
 	}
 
-	infos, err := userApiClient.GetInfos(cCtx, apps, 0)
-	if err != nil {
-		return profileNames
+	// Create batches
+	var batches [][]ethcommon.Address
+	for i := 0; i < len(apps); i += MaxAppsPerRequest {
+		end := min(i+MaxAppsPerRequest, len(apps))
+		batches = append(batches, apps[i:end])
 	}
 
-	for i, info := range infos.Apps {
-		if info.Profile != nil && info.Profile.Name != "" {
-			profileNames[apps[i].Hex()] = info.Profile.Name
+	// Fetch all batches in parallel
+	type batchResult struct {
+		batch []ethcommon.Address
+		infos *AppInfoResponse
+	}
+	resultsCh := make(chan batchResult, len(batches))
+
+	for _, batch := range batches {
+		go func(b []ethcommon.Address) {
+			infos, _ := userApiClient.GetInfos(cCtx, b, 0)
+			resultsCh <- batchResult{batch: b, infos: infos}
+		}(batch)
+	}
+
+	// Collect results and build profile names map
+	for range batches {
+		res := <-resultsCh
+		if res.infos != nil {
+			for j, info := range res.infos.Apps {
+				if info.Profile != nil && info.Profile.Name != "" {
+					profileNames[res.batch[j].Hex()] = info.Profile.Name
+				}
+			}
 		}
 	}
-
 	return profileNames
 }
