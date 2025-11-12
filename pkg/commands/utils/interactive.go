@@ -1088,12 +1088,12 @@ func GetAppXURLInteractive(cCtx *cli.Context) (*string, error) {
 
 func GetAppImageInteractive(cCtx *cli.Context) (string, error) {
 	if imageFlag := cCtx.String("image"); imageFlag != "" {
-		imgInfo, err := ValidateAndGetImageInfo(imageFlag)
+		cleanedPath, imgInfo, err := ValidateAndGetImageInfo(imageFlag)
 		if err != nil {
 			return "", fmt.Errorf("invalid image file: %w", err)
 		}
 		printImageInfo(imgInfo)
-		return imageFlag, nil
+		return cleanedPath, nil
 	}
 
 	wantsImage, err := output.Confirm("Would you like to upload an app icon/logo?")
@@ -1109,7 +1109,7 @@ func GetAppImageInteractive(cCtx *cli.Context) (string, error) {
 			if path == "" {
 				return nil
 			}
-			_, err := ValidateAndGetImageInfo(path)
+			_, _, err := ValidateAndGetImageInfo(path)
 			return err
 		},
 	)
@@ -1117,10 +1117,11 @@ func GetAppImageInteractive(cCtx *cli.Context) (string, error) {
 		return "", nil
 	}
 
-	if imgInfo, err := ValidateAndGetImageInfo(imageInput); err == nil {
+	cleanedPath, imgInfo, err := ValidateAndGetImageInfo(imageInput)
+	if err == nil {
 		printImageInfo(imgInfo)
 	}
-	return imageInput, nil
+	return cleanedPath, err
 }
 
 // ConfirmMainnetEnvironment shows a confirmation prompt for mainnet environments

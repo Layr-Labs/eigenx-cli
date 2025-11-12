@@ -103,53 +103,54 @@ func ValidateXURL(rawURL string) error {
 }
 
 // ValidateAndGetImageInfo validates and extracts image information in one pass
-func ValidateAndGetImageInfo(filePath string) (*ImageInfo, error) {
-	if strings.TrimSpace(filePath) == "" {
-		return nil, fmt.Errorf("image path cannot be empty")
-	}
+// Returns the cleaned file path (with quotes stripped) along with image info
+func ValidateAndGetImageInfo(filePath string) (string, *ImageInfo, error) {
+	// Strip quotes that may be added by terminal drag-and-drop or shell
+	filePath = strings.Trim(strings.TrimSpace(filePath), "'\"")
 
-	// Remove quotes that may be added by terminal drag-and-drop (e.g., '/path/to/file')
-	filePath = strings.Trim(filePath, "'\"")
+	if filePath == "" {
+		return "", nil, fmt.Errorf("image path cannot be empty")
+	}
 
 	// Check if file exists
 	info, err := os.Stat(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("image file not found: %s", filePath)
+			return "", nil, fmt.Errorf("image file not found: %s", filePath)
 		}
-		return nil, fmt.Errorf("failed to access image file: %w", err)
+		return "", nil, fmt.Errorf("failed to access image file: %w", err)
 	}
 
 	if info.IsDir() {
-		return nil, fmt.Errorf("path is a directory, not a file")
+		return "", nil, fmt.Errorf("path is a directory, not a file")
 	}
 
 	// Check file size
 	if info.Size() > MaxImageSize {
 		sizeMB := float64(info.Size()) / float64(BytesPerMB)
-		return nil, fmt.Errorf("image file size (%.2f MB) exceeds maximum allowed size of %d MB",
+		return "", nil, fmt.Errorf("image file size (%.2f MB) exceeds maximum allowed size of %d MB",
 			sizeMB, MaxImageSize/BytesPerMB)
 	}
 
 	// Check file extension
 	ext := strings.ToLower(filepath.Ext(filePath))
 	if !slices.Contains(ValidImageExtensions, ext) {
-		return nil, fmt.Errorf("image must be JPG or PNG format (found: %s)", ext)
+		return "", nil, fmt.Errorf("image must be JPG or PNG format (found: %s)", ext)
 	}
 
 	// Open and decode image (validates format and gets dimensions)
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open image file: %w", err)
+		return "", nil, fmt.Errorf("failed to open image file: %w", err)
 	}
 	defer file.Close()
 
 	cfg, format, err := image.DecodeConfig(file)
 	if err != nil {
-		return nil, fmt.Errorf("invalid or corrupted image file: %w", err)
+		return "", nil, fmt.Errorf("invalid or corrupted image file: %w", err)
 	}
 
-	return &ImageInfo{
+	return filePath, &ImageInfo{
 		Width:  cfg.Width,
 		Height: cfg.Height,
 		SizeKB: float64(info.Size()) / 1024,
