@@ -288,10 +288,13 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 	// Get API statuses for all Started apps to identify which have exited
 	exitedApps := getExitedApps(cCtx, result.Apps, result.AppConfigsMem)
 
+	// Get profile names for all apps from API (for better display in selection list)
+	profileNames := getProfileNamesForApps(cCtx, result.Apps)
+
 	// Determine which apps are eligible for the action
 	isEligible := func(status common.AppStatus, addr ethcommon.Address) bool {
 		switch action {
-		case "view":
+		case "view", "set profile for":
 			return true
 		case "start":
 			return status == common.ContractAppStatusStopped || status == common.ContractAppStatusSuspended || exitedApps[addr.Hex()]
@@ -316,11 +319,9 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 			statusStr = "Exited"
 		}
 
-		appName := common.GetAppName(environmentConfig.Name, appAddr.Hex())
-		displayName := appAddr.Hex()
-		if appName != "" {
-			displayName = fmt.Sprintf("%s (%s)", appName, appAddr.Hex())
-		}
+		// Prioritize API profile name, fall back to local registry
+		profileName := profileNames[appAddr.Hex()]
+		displayName := common.FormatAppDisplay(environmentConfig.Name, appAddr, profileName)
 
 		appItems = append(appItems, appItem{
 			addr:    appAddr,
@@ -403,16 +404,22 @@ func GetOrPromptAppName(cCtx *cli.Context, context string, imageRef string) (str
 	return GetAvailableAppNameInteractive(context, imageRef)
 }
 
-// GetAvailableAppNameInteractive interactively gets an available app name
-func GetAvailableAppNameInteractive(context, imageRef string) (string, error) {
-	// Start with a suggestion from the image
+// ExtractAndFindAvailableName extracts a base name from imageRef and finds an available variant
+func ExtractAndFindAvailableName(context, imageRef string) (string, error) {
 	baseName, err := extractAppNameFromImage(imageRef)
 	if err != nil {
 		return "", fmt.Errorf("failed to extract app name from image reference %s: %w", imageRef, err)
 	}
+	return findAvailableName(context, baseName), nil
+}
 
-	// Find the first available name based on the suggestion
-	suggestedName := findAvailableName(context, baseName)
+// GetAvailableAppNameInteractive interactively gets an available app name
+func GetAvailableAppNameInteractive(context, imageRef string) (string, error) {
+	// Start with a suggestion from the image
+	suggestedName, err := ExtractAndFindAvailableName(context, imageRef)
+	if err != nil {
+		return "", err
+	}
 
 	for {
 		fmt.Printf("\nApp name selection:\n")
@@ -1024,6 +1031,192 @@ func GetEnvironmentInteractive(cCtx *cli.Context, argIndex int) (string, error) 
 	return "", fmt.Errorf("failed to find selected environment")
 }
 
+func GetAppNameInteractive(cCtx *cli.Context, defaultName string) (string, error) {
+	placeholder := "Display name for your app (required)"
+	if defaultName != "" {
+		placeholder = fmt.Sprintf("Display name for your app (suggested: %s)", defaultName)
+	}
+
+	result, err := getFromFlagOrPrompt(cCtx, PromptConfig{
+		FlagName:    "name",
+		Prompt:      "App name:",
+		Placeholder: placeholder,
+		Default:     defaultName,
+		Validate:    ValidateAppName,
+		Sanitize:    func(s string) (string, error) { return SanitizeString(s), nil },
+	})
+	if err != nil || result == nil {
+		return "", err
+	}
+	return *result, nil
+}
+
+func GetAppWebsiteInteractive(cCtx *cli.Context) (*string, error) {
+	return getFromFlagOrPrompt(cCtx, PromptConfig{
+		FlagName:    "website",
+		Prompt:      "Website URL (optional):",
+		Placeholder: "Your app's website (e.g., https://example.com) - press Enter to skip",
+		Validate: func(s string) error {
+			if s == "" {
+				return nil
+			}
+			_, err := SanitizeURL(s)
+			return err
+		},
+		Sanitize: SanitizeURL,
+	})
+}
+
+func GetAppDescriptionInteractive(cCtx *cli.Context) (*string, error) {
+	return getFromFlagOrPrompt(cCtx, PromptConfig{
+		FlagName:    "description",
+		Prompt:      "Description (optional):",
+		Placeholder: "Brief description of your app (max 1000 characters) - press Enter to skip",
+		Validate: func(s string) error {
+			if s == "" {
+				return nil
+			}
+			return ValidateAppDescription(s)
+		},
+		Sanitize: func(s string) (string, error) { return SanitizeString(s), nil },
+	})
+}
+
+func GetAppXURLInteractive(cCtx *cli.Context) (*string, error) {
+	return getFromFlagOrPrompt(cCtx, PromptConfig{
+		FlagName:    "x-url",
+		Prompt:      "X (Twitter) URL (optional):",
+		Placeholder: "Your X/Twitter profile (e.g., https://x.com/username or @username) - press Enter to skip",
+		Validate: func(s string) error {
+			if s == "" {
+				return nil
+			}
+			_, err := SanitizeXURL(s)
+			return err
+		},
+		Sanitize: SanitizeXURL,
+	})
+}
+
+func GetAppImageInteractive(cCtx *cli.Context) (string, error) {
+	if imageFlag := cCtx.String("image"); imageFlag != "" {
+		cleanedPath, imgInfo, err := ValidateAndGetImageInfo(imageFlag)
+		if err != nil {
+			return "", fmt.Errorf("invalid image file: %w", err)
+		}
+		printImageInfo(imgInfo)
+		return cleanedPath, nil
+	}
+
+	wantsImage, err := output.Confirm("Would you like to upload an app icon/logo?")
+	if err != nil || !wantsImage {
+		return "", nil
+	}
+
+	imageInput, err := output.InputString(
+		"Image path:",
+		"Drag & drop image file or enter path (JPG/PNG, max 4MB, square recommended)",
+		"",
+		func(path string) error {
+			if path == "" {
+				return nil
+			}
+			_, _, err := ValidateAndGetImageInfo(path)
+			return err
+		},
+	)
+	if err != nil || imageInput == "" {
+		return "", nil
+	}
+
+	cleanedPath, imgInfo, err := ValidateAndGetImageInfo(imageInput)
+	if err == nil {
+		printImageInfo(imgInfo)
+	}
+	return cleanedPath, err
+}
+
+// CollectedProfile holds collected profile information with pointer fields for optional values
+type CollectedProfile struct {
+	Name        string
+	Website     *string
+	Description *string
+	XURL        *string
+	ImagePath   string
+}
+
+// GetAppProfileInteractive collects app profile information interactively
+// If defaultName is provided, it will be used as the suggested name
+// If allowRetry is true, user can re-enter information on rejection (deploy flow)
+// If allowRetry is false, rejection returns an error (profile set flow)
+// Returns CollectedProfile with at least a name (required), and optional fields
+func GetAppProfileInteractive(cCtx *cli.Context, defaultName string, allowRetry bool) (*CollectedProfile, error) {
+	for {
+		// Collect name (required)
+		name, err := GetAppNameInteractive(cCtx, defaultName)
+		if err != nil {
+			return nil, err
+		}
+
+		// Collect optional fields
+		website, err := GetAppWebsiteInteractive(cCtx)
+		if err != nil {
+			return nil, err
+		}
+
+		description, err := GetAppDescriptionInteractive(cCtx)
+		if err != nil {
+			return nil, err
+		}
+
+		xURL, err := GetAppXURLInteractive(cCtx)
+		if err != nil {
+			return nil, err
+		}
+
+		imagePath, err := GetAppImageInteractive(cCtx)
+		if err != nil {
+			return nil, err
+		}
+
+		profile := &CollectedProfile{
+			Name:        name,
+			Website:     website,
+			Description: description,
+			XURL:        xURL,
+			ImagePath:   imagePath,
+		}
+
+		// Always display profile for confirmation
+		fmt.Println(formatProfileForDisplay(profile))
+
+		confirmed, err := output.Confirm("Continue with this profile?")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get confirmation: %w", err)
+		}
+
+		if confirmed {
+			return profile, nil
+		}
+
+		// User rejected the profile
+		if !allowRetry {
+			// Profile set flow: just return an error
+			return nil, fmt.Errorf("profile confirmation cancelled")
+		}
+
+		// Deploy flow: ask if they want to re-enter
+		retry, err := output.Confirm("Would you like to re-enter the information?")
+		if err != nil || !retry {
+			// User doesn't want to set a profile - skip it entirely
+			return nil, nil
+		}
+
+		// Loop back to re-collect information (keep the name)
+		defaultName = name
+	}
+}
+
 // ConfirmMainnetEnvironment shows a confirmation prompt for mainnet environments
 func ConfirmMainnetEnvironment(env string) error {
 	if !common.IsMainnetEnvironment(env) {
@@ -1045,4 +1238,123 @@ func ConfirmMainnetEnvironment(env string) error {
 	}
 
 	return nil
+}
+
+// PromptConfig contains configuration for the flag-or-prompt pattern
+type PromptConfig struct {
+	FlagName    string
+	Prompt      string
+	Placeholder string
+	Default     string // Optional default value to suggest to user
+	Validate    func(string) error
+	Sanitize    func(string) (string, error)
+}
+
+// getFromFlagOrPrompt handles the flag-or-prompt pattern for strings
+func getFromFlagOrPrompt(cCtx *cli.Context, config PromptConfig) (*string, error) {
+	if flag := cCtx.String(config.FlagName); flag != "" {
+		sanitized, err := config.Sanitize(flag)
+		if err != nil {
+			return nil, fmt.Errorf("invalid %s: %w", config.FlagName, err)
+		}
+		return &sanitized, nil
+	}
+
+	input, err := output.InputString(config.Prompt, config.Placeholder, config.Default, config.Validate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get %s: %w", config.FlagName, err)
+	}
+	if input == "" {
+		return nil, nil
+	}
+	sanitized, _ := config.Sanitize(input)
+	return &sanitized, nil
+}
+
+// printImageInfo prints image ratio and pixel dimensions, including a warning if the image is not square
+func printImageInfo(img *ImageInfo) {
+	fmt.Printf("📸 Image: %dx%d pixels, %.1f KB\n", img.Width, img.Height, img.SizeKB)
+	if !img.IsSquare() {
+		fmt.Printf("⚠️  Note: Image is not square (%.2f:1 ratio). Square images display best.\n", img.AspectRatio())
+	}
+}
+
+// getProfileNamesForApps fetches profile names for a list of apps from the API
+// Batches requests and executes them in parallel
+func getProfileNamesForApps(cCtx *cli.Context, apps []ethcommon.Address) map[string]string {
+	profileNames := make(map[string]string)
+	if len(apps) == 0 {
+		return profileNames
+	}
+
+	userApiClient, err := NewUserApiClient(cCtx)
+	if err != nil {
+		return profileNames
+	}
+
+	// Create batches
+	var batches [][]ethcommon.Address
+	for i := 0; i < len(apps); i += MaxAppsPerRequest {
+		end := min(i+MaxAppsPerRequest, len(apps))
+		batches = append(batches, apps[i:end])
+	}
+
+	// Fetch all batches in parallel
+	type batchResult struct {
+		batch []ethcommon.Address
+		infos *AppInfoResponse
+	}
+	resultsCh := make(chan batchResult, len(batches))
+
+	for _, batch := range batches {
+		go func(b []ethcommon.Address) {
+			infos, _ := userApiClient.GetInfos(cCtx, b, 0)
+			resultsCh <- batchResult{batch: b, infos: infos}
+		}(batch)
+	}
+
+	// Collect results and build profile names map
+	for range batches {
+		res := <-resultsCh
+		if res.infos != nil {
+			for j, info := range res.infos.Apps {
+				if info.Profile != nil && info.Profile.Name != "" {
+					profileNames[res.batch[j].Hex()] = info.Profile.Name
+				}
+			}
+		}
+	}
+	return profileNames
+}
+
+// formatProfileForDisplay formats a profile for display to the user
+func formatProfileForDisplay(profile *CollectedProfile) string {
+	output := "\nPublic App Profile:\n"
+	output += fmt.Sprintf("  Name:        %s\n", profile.Name)
+
+	if profile.Website != nil && *profile.Website != "" {
+		output += fmt.Sprintf("  Website:     %s\n", *profile.Website)
+	} else {
+		output += "  Website:     (not provided)\n"
+	}
+
+	if profile.Description != nil && *profile.Description != "" {
+		output += fmt.Sprintf("  Description: %s\n", *profile.Description)
+	} else {
+		output += "  Description: (not provided)\n"
+	}
+
+	if profile.XURL != nil && *profile.XURL != "" {
+		output += fmt.Sprintf("  X URL:       %s\n", *profile.XURL)
+	} else {
+		output += "  X URL:       (not provided)\n"
+	}
+
+	if profile.ImagePath != "" {
+		output += fmt.Sprintf("  Image:       %s\n", profile.ImagePath)
+	} else {
+		output += "  Image:       (not provided)\n"
+	}
+
+	return output
 }

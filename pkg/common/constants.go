@@ -44,6 +44,10 @@ var (
 	// bytes4(keccak256("CAN_VIEW_SENSITIVE_APP_INFO()"))
 	CanViewSensitiveAppInfoPermission = [4]byte{0x0e, 0x67, 0xb2, 0x2f}
 
+	// The permission to update app profile
+	// bytes4(keccak256("CAN_UPDATE_APP_PROFILE()"))
+	CanUpdateAppProfilePermission = [4]byte{0x03, 0x6f, 0xef, 0x61}
+
 	// The permission to manage billing and subscriptions
 	// bytes4(keccak256("CAN_MANAGE_BILLING()"))
 	CanManageBillingPermission = [4]byte{0xd6, 0xb8, 0x55, 0xa1}

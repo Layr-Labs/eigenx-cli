@@ -176,6 +176,21 @@ func CalculateAndSignApiPermissionDigest(
 	return signature, nil
 }
 
+// GetAppProfileName fetches the profile name for an app from the API
+// Returns empty string if profile doesn't exist or API call fails
+func GetAppProfileName(cCtx *cli.Context, appID ethcommon.Address) string {
+	userApiClient, err := NewUserApiClient(cCtx)
+	if err != nil {
+		return ""
+	}
+
+	info, err := userApiClient.GetInfos(cCtx, []ethcommon.Address{appID}, 1)
+	if err == nil && len(info.Apps) > 0 && info.Apps[0].Profile != nil {
+		return info.Apps[0].Profile.Name
+	}
+	return ""
+}
+
 func GetAndPrintAppInfo(cCtx *cli.Context, appID ethcommon.Address, statusOverride ...string) error {
 	logger := common.LoggerFromContext(cCtx)
 
@@ -254,8 +269,10 @@ func PrintAppInfoWithStatus(ctx context.Context, logger iface.Logger, client *et
 	}
 	fmt.Println()
 
-	// Show app name if available
-	if name := common.GetAppName(environmentName, appID.Hex()); name != "" {
+	// Show app name - prioritize profile name, fall back to local registry
+	if info.Profile != nil && info.Profile.Name != "" {
+		logger.Info("App Name: %s", info.Profile.Name)
+	} else if name := common.GetAppName(environmentName, appID.Hex()); name != "" {
 		logger.Info("App Name: %s", name)
 	}
 
@@ -267,6 +284,22 @@ func PrintAppInfoWithStatus(ctx context.Context, logger iface.Logger, client *et
 	logger.Info("Status: %s", status)
 	logger.Info("Instance: %s", info.MachineType)
 	logger.Info("IP: %s", info.Ip)
+
+	// Display app profile if available
+	if info.Profile != nil {
+		if info.Profile.Website != nil {
+			logger.Info("Website: %s", *info.Profile.Website)
+		}
+		if info.Profile.Description != nil {
+			logger.Info("Description: %s", *info.Profile.Description)
+		}
+		if info.Profile.XURL != nil {
+			logger.Info("X URL: %s", *info.Profile.XURL)
+		}
+		if info.Profile.ImageURL != nil {
+			logger.Info("Image URL: %s", *info.Profile.ImageURL)
+		}
+	}
 
 	// Display addresses if available
 	if len(info.EVMAddresses) > 0 {

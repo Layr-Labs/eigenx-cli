@@ -18,7 +18,7 @@ var AppCommand = &cli.Command{
 		app.ListCommand,
 		app.InfoCommand,
 		app.LogsCommand,
-		app.NameCommand,
+		app.ProfileCommand,
 		app.ConfigureTLSCommand,
 	},
 }

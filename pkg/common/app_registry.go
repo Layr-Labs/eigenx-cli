@@ -186,9 +186,14 @@ func ListApps(context string) (map[string]App, error) {
 }
 
 // FormatAppDisplay returns a user-friendly display string for an app
+// Prioritizes profileName over local registry name
 // Returns "name (0x123...)" if name exists, or just "0x123..." if no name
-func FormatAppDisplay(context string, appID common.Address) string {
-	if name := GetAppName(context, appID.Hex()); name != "" {
+func FormatAppDisplay(context string, appID common.Address, profileName string) string {
+	name := profileName
+	if name == "" {
+		name = GetAppName(context, appID.Hex())
+	}
+	if name != "" {
 		return fmt.Sprintf("%s (%s)", name, appID.Hex())
 	}
 	return appID.Hex()
