@@ -340,6 +340,7 @@ func buildDockerImage(buildContext, dockerfilePath, tag string) error {
 		"--platform", DockerPlatform,
 		"-t", tag,
 		"-f", dockerfilePath,
+		"--load",
 		"--progress=plain",
 		buildContext,
 	)
