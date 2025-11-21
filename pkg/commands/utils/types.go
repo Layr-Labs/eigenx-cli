@@ -27,12 +27,13 @@ const (
 )
 
 type LayeredDockerfileTemplateData struct {
-	BaseImage        string
-	OriginalCmd      string
-	OriginalUser     string
-	LogRedirect      string
-	IncludeTLS       bool
-	EigenXCLIVersion string
+	BaseImage             string
+	OriginalCmd           string
+	OriginalUser          string
+	LogRedirect           string
+	MonitoringMemoryAllow string
+	IncludeTLS            bool
+	EigenXCLIVersion      string
 }
 
 type EnvSourceScriptTemplateData struct {

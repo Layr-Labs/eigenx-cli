@@ -285,6 +285,16 @@ func PrintAppInfoWithStatus(ctx context.Context, logger iface.Logger, client *et
 	logger.Info("Instance: %s", info.MachineType)
 	logger.Info("IP: %s", info.Ip)
 
+	// Display CPU and Memory metrics if available
+	if info.CPUUtilizationPercent > 0 {
+		logger.Info("CPU Usage: %.2f%%", info.CPUUtilizationPercent)
+	}
+	if info.MemoryTotalBytes > 0 {
+		memoryUsedGB := info.MemoryUsedBytes / (1024 * 1024 * 1024)
+		memoryTotalGB := info.MemoryTotalBytes / (1024 * 1024 * 1024)
+		logger.Info("Memory Usage: %.2f%% (%.2f GB / %.2f GB)", info.MemoryUtilizationPercent, memoryUsedGB, memoryTotalGB)
+	}
+
 	// Display app profile if available
 	if info.Profile != nil {
 		if info.Profile.Website != nil {

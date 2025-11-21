@@ -21,6 +21,7 @@ var DeployCommand = &cli.Command{
 		common.EnvFlag,
 		common.FileFlag,
 		common.LogVisibilityFlag,
+		common.MemoryMonitoringFlag,
 		common.InstanceTypeFlag,
 		common.NameFlag,
 		common.WebsiteFlag,
@@ -82,14 +83,20 @@ func deployAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get log settings: %w", err)
 	}
 
-	// 9. Generate random salt
+	// 9. Get memory monitoring preference
+	monitoringMemoryAllow, err := utils.GetMemoryMonitoringSetting(cCtx)
+	if err != nil {
+		return fmt.Errorf("failed to get memory monitoring setting: %w", err)
+	}
+
+	// 10. Generate random salt
 	salt := [32]byte{}
 	_, err = rand.Read(salt[:])
 	if err != nil {
 		return fmt.Errorf("failed to generate random salt: %w", err)
 	}
 
-	// 10. Get app ID
+	// 11. Get app ID
 	_, appController, err := utils.GetAppControllerBinding(cCtx)
 	if err != nil {
 		return fmt.Errorf("failed to get app controller binding: %w", err)
@@ -99,19 +106,19 @@ func deployAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get app id: %w", err)
 	}
 
-	// 11. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
-	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appIDToBeDeployed, dockerfilePath, imageRef, envFilePath, logRedirect, instanceType, 3)
+	// 12. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
+	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appIDToBeDeployed, dockerfilePath, imageRef, envFilePath, logRedirect, monitoringMemoryAllow, instanceType, 3)
 	if err != nil {
 		return err
 	}
 
-	// 12. Deploy the app
+	// 13. Deploy the app
 	appID, err := preflightCtx.Caller.DeployApp(cCtx.Context, salt, release, publicLogs, imageRef)
 	if err != nil {
 		return fmt.Errorf("failed to deploy app: %w", err)
 	}
 
-	// 13. Collect app profile while deployment is in progress (optional)
+	// 14. Collect app profile while deployment is in progress (optional)
 	environment := preflightCtx.EnvironmentConfig.Name
 	suggestedName, err := utils.ExtractAndFindAvailableName(environment, imageRef)
 	if err != nil {
@@ -126,7 +133,7 @@ func deployAction(cCtx *cli.Context) error {
 		profile = nil
 	}
 
-	// 14. Upload profile if provided (non-blocking - warn on failure but don't fail deployment)
+	// 15. Upload profile if provided (non-blocking - warn on failure but don't fail deployment)
 	if profile != nil {
 		logger.Info("Uploading app profile...")
 		userApiClient, err := utils.NewUserApiClient(cCtx)
@@ -142,7 +149,7 @@ func deployAction(cCtx *cli.Context) error {
 		}
 	}
 
-	// 15. Watch until deployment completes
+	// 16. Watch until deployment completes
 	return utils.WatchUntilTransitionComplete(cCtx, appID, common.AppStatusDeploying)
 }
 

@@ -70,6 +70,11 @@ var (
 		Usage: "Log visibility setting: public, private, or off",
 	}
 
+	MemoryMonitoringFlag = &cli.StringFlag{
+		Name:  "memory-monitoring",
+		Usage: "Memory monitoring setting: enable or disable",
+	}
+
 	InstanceTypeFlag = &cli.StringFlag{
 		Name:  "instance-type",
 		Usage: "Machine instance type to use e.g. g1-standard-4t, g1-standard-8t",

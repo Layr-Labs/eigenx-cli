@@ -893,6 +893,39 @@ func GetLogSettingsInteractive(cCtx *cli.Context) (logRedirect string, publicLog
 	}
 }
 
+// GetMemoryMonitoringSetting returns the memory monitoring configuration from flags or interactive prompt
+func GetMemoryMonitoringSetting(cCtx *cli.Context) (string, error) {
+	if flagValue := cCtx.String("memory-monitoring"); flagValue != "" {
+		switch strings.ToLower(flagValue) {
+		case "enable":
+			return "always", nil
+		case "disable":
+			return "never", nil
+		default:
+			return "", fmt.Errorf("invalid --memory-monitoring value: %s (must be enable or disable)", flagValue)
+		}
+	}
+
+	options := []string{
+		"Yes",
+		"No",
+	}
+
+	choice, err := output.SelectString("Enable memory monitoring?", options)
+	if err != nil {
+		return "", fmt.Errorf("failed to get memory monitoring choice: %w", err)
+	}
+
+	switch choice {
+	case "Yes":
+		return "always", nil
+	case "No":
+		return "never", nil
+	default:
+		return "", fmt.Errorf("unexpected choice: %s", choice)
+	}
+}
+
 // GetInstanceTypeInteractive prompts for instance type if not provided via flag.
 // The defaultSKU parameter is used as the default selection in interactive mode:
 // - For new deployments: pass empty string (uses first SKU from backend)
