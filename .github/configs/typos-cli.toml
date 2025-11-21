@@ -1,13 +1,19 @@
+# Configuration for the 'typos' spell checker.
+
+# --- Global File Inclusion/Exclusion Rules ---
 [files]
+# Extend the list of files/patterns to be explicitly excluded from spell check.
 extend-exclude = [
     "go.mod",
     "go.sum",
     "**/lib/**",
     "**/docs/images/**",
-    # Not present locally, but is in remote (github).
+    # Ignoring remote-only directories
     "**/doc/**",
     "internal/bindings/**"
 ]
+
+# Standard ignored properties for cleaner project management.
 ignore-hidden = true
 ignore-files = true
 ignore-dot = true
@@ -15,6 +21,7 @@ ignore-vcs = true
 ignore-global = true
 ignore-parent = true
 
+# --- Default Checker Behavior for All Files ---
 [default]
 binary = false
 check-filename = true
@@ -27,12 +34,17 @@ extend-ignore-identifiers-re = []
 extend-ignore-words-re = []
 extend-ignore-re = []
 
+# --- Custom Allowed Words/Identifiers (Global) ---
+
+# Global identifiers to allow.
 [default.extend-identifiers]
 
-# Weird syntax, but this how you ignore corrections for certain words.
+# Global words to allow (case-sensitive) for common project jargon.
 [default.extend-words]
-strat = "strat"
-froms = "froms"
+strat = "strat" # E.g., for 'strategy' abbreviation
+froms = "froms" # Likely used as a plural verb/noun
+
+# --- Type-Specific Configuration (e.g., Go, Shell, Python) ---
 
 [type.go]
 extend-glob = []
@@ -41,6 +53,7 @@ extend-ignore-words-re = []
 extend-ignore-re = []
 
 [type.go.extend-identifiers]
+# Allow 'flate' (often related to 'deflate' or compression)
 flate = "flate"
 
 [type.go.extend-words]
@@ -52,6 +65,7 @@ extend-ignore-words-re = []
 extend-ignore-re = []
 
 [type.sh.extend-identifiers]
+# Shell-specific abbreviations
 ot = "ot"
 stap = "stap"
 
@@ -64,6 +78,7 @@ extend-ignore-words-re = []
 extend-ignore-re = []
 
 [type.py.extend-identifiers]
+# Standard Python/NumPy library identifiers
 NDArray = "NDArray"
 arange = "arange"
 EOFError = "EOFError"
