@@ -96,29 +96,30 @@ type AppProfileResponse struct {
 }
 
 type RawAppInfo struct {
-	Addresses                json.RawMessage     `json:"addresses"`
-	Status                   string              `json:"app_status"`
-	Ip                       string              `json:"ip"`
-	MachineType              string              `json:"machine_type"`
-	Profile                  *AppProfileResponse `json:"profile,omitempty"`
-	CPUUtilizationPercent    float64             `json:"cpu_utilization_percent"`
-	MemoryUtilizationPercent float64             `json:"memory_utilization_percent"`
-	MemoryUsedBytes          float64             `json:"memory_used_bytes"`
-	MemoryTotalBytes         float64             `json:"memory_total_bytes"`
+	Addresses   json.RawMessage     `json:"addresses"`
+	Status      string              `json:"app_status"`
+	Ip          string              `json:"ip"`
+	MachineType string              `json:"machine_type"`
+	Profile     *AppProfileResponse `json:"profile,omitempty"`
+	Metrics     *AppMetrics         `json:"metrics,omitempty"`
 }
 
 // AppInfo contains the app info with parsed and validated addresses
 type AppInfo struct {
-	EVMAddresses             []kmstypes.EVMAddressAndDerivationPath
-	SolanaAddresses          []kmstypes.SolanaAddressAndDerivationPath
-	Status                   string
-	Ip                       string
-	MachineType              string
-	Profile                  *AppProfileResponse
-	CPUUtilizationPercent    float64
-	MemoryUtilizationPercent float64
-	MemoryUsedBytes          float64
-	MemoryTotalBytes         float64
+	EVMAddresses    []kmstypes.EVMAddressAndDerivationPath
+	SolanaAddresses []kmstypes.SolanaAddressAndDerivationPath
+	Status          string
+	Ip              string
+	MachineType     string
+	Profile         *AppProfileResponse
+	Metrics         *AppMetrics
+}
+
+type AppMetrics struct {
+	CPUUtilizationPercent    float64 `json:"cpu_utilization_percent,omitempty"`
+	MemoryUtilizationPercent float64 `json:"memory_utilization_percent,omitempty"`
+	MemoryUsedBytes          uint64  `json:"memory_used_bytes,omitempty"`
+	MemoryTotalBytes         uint64  `json:"memory_total_bytes,omitempty"`
 }
 
 type AppInfoResponse struct {
@@ -224,17 +225,24 @@ func (cc *UserApiClient) GetInfos(cCtx *cli.Context, appIDs []ethcommon.Address,
 			return nil, fmt.Errorf("error processing addresses for app %s: %w", appIDList[i], err)
 		}
 
+		var metrics *AppMetrics
+		if rawApp.Metrics != nil {
+			metrics = &AppMetrics{
+				CPUUtilizationPercent:    rawApp.Metrics.CPUUtilizationPercent,
+				MemoryUtilizationPercent: rawApp.Metrics.MemoryUtilizationPercent,
+				MemoryUsedBytes:          rawApp.Metrics.MemoryUsedBytes,
+				MemoryTotalBytes:         rawApp.Metrics.MemoryTotalBytes,
+			}
+		}
+
 		result.Apps[i] = AppInfo{
-			EVMAddresses:             evmAddrs,
-			SolanaAddresses:          solanaAddrs,
-			Status:                   rawApp.Status,
-			Ip:                       rawApp.Ip,
-			MachineType:              rawApp.MachineType,
-			Profile:                  rawApp.Profile,
-			CPUUtilizationPercent:    rawApp.CPUUtilizationPercent,
-			MemoryUtilizationPercent: rawApp.MemoryUtilizationPercent,
-			MemoryUsedBytes:          rawApp.MemoryUsedBytes,
-			MemoryTotalBytes:         rawApp.MemoryTotalBytes,
+			EVMAddresses:    evmAddrs,
+			SolanaAddresses: solanaAddrs,
+			Status:          rawApp.Status,
+			Ip:              rawApp.Ip,
+			MachineType:     rawApp.MachineType,
+			Profile:         rawApp.Profile,
+			Metrics:         metrics,
 		}
 	}
 
