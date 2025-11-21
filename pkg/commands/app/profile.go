@@ -35,7 +35,7 @@ func profileSetAction(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx)
 
 	// Get app ID
-	appID, err := utils.GetAppIDInteractive(cCtx, 0, "set profile for")
+	appID, err := utils.GetAppIDInteractive(cCtx, nil, 0, "set profile for")
 	if err != nil {
 		return err
 	}
@@ -59,6 +59,11 @@ func profileSetAction(cCtx *cli.Context) error {
 	response, err := userApiClient.UploadAppProfile(cCtx, appID.Hex(), profile.Name, profile.Website, profile.Description, profile.XURL, profile.ImagePath)
 	if err != nil {
 		return fmt.Errorf("failed to upload profile: %w", err)
+	}
+
+	// Invalidate profile cache to ensure fresh data on next command
+	if err := common.InvalidateProfileCache(); err != nil {
+		logger.Debug("Failed to invalidate profile cache: %v", err)
 	}
 
 	// Display success message with returned data

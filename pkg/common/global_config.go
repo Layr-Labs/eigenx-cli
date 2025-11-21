@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -22,6 +23,10 @@ type GlobalConfig struct {
 	LastVersionCheck int64 `yaml:"last_version_check,omitempty"`
 	// LastKnownVersion stores the last known latest version from the server
 	LastKnownVersion string `yaml:"last_known_version,omitempty"`
+	// LastProfileCacheUpdate stores the timestamp of the last profile cache update
+	LastProfileCacheUpdate int64 `yaml:"last_profile_cache_update,omitempty"`
+	// ProfileCache stores app profiles (appID → profile name) per environment
+	ProfileCache map[string]map[string]string `yaml:"profile_cache,omitempty"`
 }
 
 // GetGlobalConfigDir returns the XDG-compliant directory where global eigenx config should be stored
@@ -172,6 +177,60 @@ func SetDefaultEnvironment(environment string) error {
 	}
 
 	config.DefaultEnvironment = environment
+
+	return SaveGlobalConfig(config)
+}
+
+// LoadProfileCache loads the cached app profiles for a given environment
+// Returns cached profiles and timestamp, using 24-hour TTL
+func LoadProfileCache(environment string) (profiles map[string]string, timestamp int64, err error) {
+	config, err := LoadGlobalConfig()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Initialize cache map if nil
+	if config.ProfileCache == nil {
+		return make(map[string]string), 0, nil
+	}
+
+	// Get profiles for this environment
+	envProfiles, exists := config.ProfileCache[environment]
+	if !exists {
+		return make(map[string]string), 0, nil
+	}
+
+	return envProfiles, config.LastProfileCacheUpdate, nil
+}
+
+// SaveProfileCache saves app profiles to cache with current timestamp
+func SaveProfileCache(environment string, profiles map[string]string) error {
+	config, err := LoadGlobalConfig()
+	if err != nil {
+		return err
+	}
+
+	// Initialize cache map if nil
+	if config.ProfileCache == nil {
+		config.ProfileCache = make(map[string]map[string]string)
+	}
+
+	// Save profiles for this environment
+	config.ProfileCache[environment] = profiles
+	config.LastProfileCacheUpdate = time.Now().Unix()
+
+	return SaveGlobalConfig(config)
+}
+
+// InvalidateProfileCache clears the profile cache timestamp to force refresh
+func InvalidateProfileCache() error {
+	config, err := LoadGlobalConfig()
+	if err != nil {
+		return err
+	}
+
+	config.LastProfileCacheUpdate = 0
+	config.ProfileCache = nil
 
 	return SaveGlobalConfig(config)
 }

@@ -22,35 +22,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// GetAppID gets the app id from CLI args or auto-detects from project context. App id is the address of the app contract on L1.
-func GetAppID(cCtx *cli.Context, argIndex int) (ethcommon.Address, error) {
-	// Check if app_id provided as argument
-	if cCtx.Args().Len() > argIndex {
-		nameOrID := cCtx.Args().Get(argIndex)
-
-		// Get environment config for context
-		environmentConfig, err := GetEnvironmentConfig(cCtx)
-		if err != nil {
-			return ethcommon.Address{}, fmt.Errorf("failed to get environment config: %w", err)
-		}
-
-		// First try to resolve as a name from the registry
-		resolvedID, err := common.ResolveAppID(environmentConfig.Name, nameOrID)
-		if err == nil {
-			return ethcommon.HexToAddress(resolvedID), nil
-		}
-
-		// If not a name, check if it's a valid hex address
-		if ethcommon.IsHexAddress(nameOrID) {
-			return ethcommon.HexToAddress(nameOrID), nil
-		}
-
-		return ethcommon.Address{}, fmt.Errorf("invalid app id or name: %s", nameOrID)
-	}
-
-	return ethcommon.Address{}, fmt.Errorf("app id or name required. Provide as argument or ensure you're in a project directory with deployment info")
-}
-
 func GetAppControllerBinding(cCtx *cli.Context) (*ethclient.Client, *AppController.AppController, error) {
 	environmentConfig, err := GetEnvironmentConfig(cCtx)
 	if err != nil {
@@ -121,6 +92,7 @@ func GetContractCaller(cCtx *cli.Context) (*common.ContractCaller, error) {
 		environmentConfig,
 		client,
 		logger,
+		nil,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create contract caller: %w", err)
@@ -174,21 +146,6 @@ func CalculateAndSignApiPermissionDigest(
 	}
 
 	return signature, nil
-}
-
-// GetAppProfileName fetches the profile name for an app from the API
-// Returns empty string if profile doesn't exist or API call fails
-func GetAppProfileName(cCtx *cli.Context, appID ethcommon.Address) string {
-	userApiClient, err := NewUserApiClient(cCtx)
-	if err != nil {
-		return ""
-	}
-
-	info, err := userApiClient.GetInfos(cCtx, []ethcommon.Address{appID}, 1)
-	if err == nil && len(info.Apps) > 0 && info.Apps[0].Profile != nil {
-		return info.Apps[0].Profile.Name
-	}
-	return ""
 }
 
 func GetAndPrintAppInfo(cCtx *cli.Context, appID ethcommon.Address, statusOverride ...string) error {
@@ -272,7 +229,7 @@ func PrintAppInfoWithStatus(ctx context.Context, logger iface.Logger, client *et
 	// Show app name - prioritize profile name, fall back to local registry
 	if info.Profile != nil && info.Profile.Name != "" {
 		logger.Info("App Name: %s", info.Profile.Name)
-	} else if name := common.GetAppName(environmentName, appID.Hex()); name != "" {
+	} else if name := common.GetAppNameFromLocalRegistry(environmentName, appID.Hex()); name != "" {
 		logger.Info("App Name: %s", name)
 	}
 

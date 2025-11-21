@@ -17,6 +17,7 @@ type PreflightContext struct {
 	Caller            *common.ContractCaller
 	EnvironmentConfig *common.EnvironmentConfig
 	Client            *ethclient.Client
+	Resolver          *AppResolver
 	PrivateKey        string
 }
 
@@ -58,13 +59,20 @@ func DoPreflightChecks(cCtx *cli.Context) (*PreflightContext, error) {
 		return nil, fmt.Errorf("failed to get chain ID from %s: %w", rpcURL, err)
 	}
 
-	// 6. Create contract caller
+	// 6. Create app resolver for name/ID resolution
+	resolver, err := NewAppResolver(cCtx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create app resolver: %w", err)
+	}
+
+	// 7. Create contract caller
 	contractCaller, err := common.NewContractCaller(
 		privateKey,
 		chainID,
 		environmentConfig,
 		client,
 		logger,
+		resolver,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create contract caller: %w", err)
@@ -75,6 +83,7 @@ func DoPreflightChecks(cCtx *cli.Context) (*PreflightContext, error) {
 		EnvironmentConfig: &environmentConfig,
 		Client:            client,
 		PrivateKey:        privateKey,
+		Resolver:          resolver,
 	}, nil
 }
 

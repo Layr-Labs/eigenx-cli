@@ -45,9 +45,10 @@ type ContractCaller struct {
 	permissionControllerBinding *permissioncontrollerV2.IPermissionController
 	erc7702DelegatorBinding     *erc7702delegatorV2.EIP7702StatelessDeleGator
 	SelfAddress                 common.Address
+	Resolver                    iface.AppNameResolver
 }
 
-func NewContractCaller(privateKeyHex string, chainID *big.Int, environmentConfig EnvironmentConfig, client *ethclient.Client, logger iface.Logger) (*ContractCaller, error) {
+func NewContractCaller(privateKeyHex string, chainID *big.Int, environmentConfig EnvironmentConfig, client *ethclient.Client, logger iface.Logger, resolver iface.AppNameResolver) (*ContractCaller, error) {
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %w", err)
@@ -64,6 +65,7 @@ func NewContractCaller(privateKeyHex string, chainID *big.Int, environmentConfig
 		permissionControllerBinding: permissioncontrollerV2.NewIPermissionController(),
 		erc7702DelegatorBinding:     erc7702delegatorV2.NewEIP7702StatelessDeleGator(),
 		SelfAddress:                 SelfAddress,
+		Resolver:                    resolver,
 	}, nil
 }
 
@@ -167,13 +169,13 @@ func (cc *ContractCaller) UpgradeApp(ctx context.Context, appAddress common.Addr
 	}
 
 	// Prepare confirmation and pending messages
-	appName := GetAppName(cc.environmentConfig.Name, appAddress.Hex())
-
 	confirmationPrompt := "Upgrade app"
 	pendingMessage := "Upgrading app..."
-	if appName != "" {
-		confirmationPrompt = fmt.Sprintf("%s '%s'", confirmationPrompt, appName)
-		pendingMessage = fmt.Sprintf("Upgrading app '%s'...", appName)
+	if cc.Resolver != nil {
+		if appName := cc.Resolver.GetAppName(appAddress); appName != "" {
+			confirmationPrompt = fmt.Sprintf("%s '%s'", confirmationPrompt, appName)
+			pendingMessage = fmt.Sprintf("Upgrading app '%s'...", appName)
+		}
 	}
 	confirmationPrompt = fmt.Sprintf("%s with image: %s", confirmationPrompt, imageRef)
 
@@ -194,13 +196,13 @@ func (cc *ContractCaller) StartApp(ctx context.Context, appAddress common.Addres
 	}
 
 	// Prepare confirmation and pending messages
-	appName := GetAppName(cc.environmentConfig.Name, appAddress.Hex())
-
 	confirmationPrompt := "Start app"
 	pendingMessage := "Starting app..."
-	if appName != "" {
-		confirmationPrompt = fmt.Sprintf("%s '%s'", confirmationPrompt, appName)
-		pendingMessage = fmt.Sprintf("Starting app '%s'...", appName)
+	if cc.Resolver != nil {
+		if appName := cc.Resolver.GetAppName(appAddress); appName != "" {
+			confirmationPrompt = fmt.Sprintf("%s '%s'", confirmationPrompt, appName)
+			pendingMessage = fmt.Sprintf("Starting app '%s'...", appName)
+		}
 	}
 
 	return cc.SendAndWaitForTransaction(ctx, "StartApp", callMsg, cc.isMainnet(), confirmationPrompt, pendingMessage)
@@ -220,13 +222,13 @@ func (cc *ContractCaller) StopApp(ctx context.Context, appAddress common.Address
 	}
 
 	// Prepare confirmation and pending messages
-	appName := GetAppName(cc.environmentConfig.Name, appAddress.Hex())
-
 	confirmationPrompt := "Stop app"
 	pendingMessage := "Stopping app..."
-	if appName != "" {
-		confirmationPrompt = fmt.Sprintf("%s '%s'", confirmationPrompt, appName)
-		pendingMessage = fmt.Sprintf("Stopping app '%s'...", appName)
+	if cc.Resolver != nil {
+		if appName := cc.Resolver.GetAppName(appAddress); appName != "" {
+			confirmationPrompt = fmt.Sprintf("%s '%s'", confirmationPrompt, appName)
+			pendingMessage = fmt.Sprintf("Stopping app '%s'...", appName)
+		}
 	}
 
 	return cc.SendAndWaitForTransaction(ctx, "StopApp", callMsg, cc.isMainnet(), confirmationPrompt, pendingMessage)
@@ -246,13 +248,13 @@ func (cc *ContractCaller) TerminateApp(ctx context.Context, appAddress common.Ad
 	}
 
 	// Prepare confirmation and pending messages
-	appName := GetAppName(cc.environmentConfig.Name, appAddress.Hex())
-
 	confirmationPrompt := "⚠️  \033[1mPermanently\033[0m destroy app"
 	pendingMessage := "Terminating app..."
-	if appName != "" {
-		confirmationPrompt = fmt.Sprintf("%s '%s'", confirmationPrompt, appName)
-		pendingMessage = fmt.Sprintf("Terminating app '%s'...", appName)
+	if cc.Resolver != nil {
+		if appName := cc.Resolver.GetAppName(appAddress); appName != "" {
+			confirmationPrompt = fmt.Sprintf("%s '%s'", confirmationPrompt, appName)
+			pendingMessage = fmt.Sprintf("Terminating app '%s'...", appName)
+		}
 	}
 
 	// Note: Terminate always needs confirmation unless force is specified

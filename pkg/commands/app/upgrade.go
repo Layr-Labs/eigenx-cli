@@ -39,7 +39,7 @@ func upgradeAction(cCtx *cli.Context) error {
 	}
 
 	// 3. Get app ID from args or interactive selection
-	appID, err := utils.GetAppIDInteractive(cCtx, 0, "upgrade")
+	appID, err := utils.GetAppIDInteractive(cCtx, preflightCtx.Resolver, 0, "upgrade")
 	if err != nil {
 		return fmt.Errorf("failed to get app id: %w", err)
 	}

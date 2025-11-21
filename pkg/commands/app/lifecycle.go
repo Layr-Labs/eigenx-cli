@@ -56,13 +56,12 @@ func startAction(cCtx *cli.Context) error {
 	}
 
 	// Get app address from args or interactive selection
-	appID, err := utils.GetAppIDInteractive(cCtx, 0, "start")
+	appID, err := utils.GetAppIDInteractive(cCtx, preflightCtx.Resolver, 0, "start")
 	if err != nil {
 		return fmt.Errorf("failed to get app address: %w", err)
 	}
 
-	profileName := utils.GetAppProfileName(cCtx, appID)
-	formattedApp := common.FormatAppDisplay(preflightCtx.EnvironmentConfig.Name, appID, profileName)
+	formattedApp := preflightCtx.Resolver.FormatAppDisplay(appID)
 
 	// Call AppController.StartApp
 	err = preflightCtx.Caller.StartApp(ctx, appID)
@@ -90,13 +89,12 @@ func stopAction(cCtx *cli.Context) error {
 	}
 
 	// Get app address from args or interactive selection
-	appID, err := utils.GetAppIDInteractive(cCtx, 0, "stop")
+	appID, err := utils.GetAppIDInteractive(cCtx, preflightCtx.Resolver, 0, "stop")
 	if err != nil {
 		return fmt.Errorf("failed to get app address: %w", err)
 	}
 
-	profileName := utils.GetAppProfileName(cCtx, appID)
-	formattedApp := common.FormatAppDisplay(preflightCtx.EnvironmentConfig.Name, appID, profileName)
+	formattedApp := preflightCtx.Resolver.FormatAppDisplay(appID)
 
 	// Call AppController.StopApp
 	err = preflightCtx.Caller.StopApp(ctx, appID)
@@ -124,7 +122,7 @@ func terminateAction(cCtx *cli.Context) error {
 	}
 
 	// Get app address from args or interactive selection
-	appID, err := utils.GetAppIDInteractive(cCtx, 0, "terminate")
+	appID, err := utils.GetAppIDInteractive(cCtx, preflightCtx.Resolver, 0, "terminate")
 	if err != nil {
 		return fmt.Errorf("failed to get app address: %w", err)
 	}
@@ -139,8 +137,7 @@ func terminateAction(cCtx *cli.Context) error {
 		return err
 	}
 
-	profileName := utils.GetAppProfileName(cCtx, appID)
-	logger.Info("App %s terminated successfully", common.FormatAppDisplay(preflightCtx.EnvironmentConfig.Name, appID, profileName))
+	logger.Info("App %s terminated successfully", preflightCtx.Resolver.FormatAppDisplay(appID))
 
 	return utils.GetAndPrintAppInfo(cCtx, appID, common.AppStatusTerminating)
 }

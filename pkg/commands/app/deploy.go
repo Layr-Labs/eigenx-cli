@@ -113,7 +113,7 @@ func deployAction(cCtx *cli.Context) error {
 
 	// 13. Collect app profile while deployment is in progress (optional)
 	environment := preflightCtx.EnvironmentConfig.Name
-	suggestedName, err := utils.ExtractAndFindAvailableName(environment, imageRef)
+	suggestedName, err := utils.ExtractAndFindAvailableName(cCtx, environment, imageRef)
 	if err != nil {
 		logger.Warn("Failed to extract suggested name: %s", err.Error())
 		suggestedName = ""
@@ -138,6 +138,11 @@ func deployAction(cCtx *cli.Context) error {
 				logger.Warn("Failed to upload profile: %s", err.Error())
 			} else {
 				logger.Info("✓ Profile uploaded successfully")
+
+				// Invalidate profile cache to ensure fresh data on next command
+				if err := common.InvalidateProfileCache(); err != nil {
+					logger.Debug("Failed to invalidate profile cache: %v", err)
+				}
 			}
 		}
 	}
