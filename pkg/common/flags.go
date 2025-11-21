@@ -70,9 +70,9 @@ var (
 		Usage: "Log visibility setting: public, private, or off",
 	}
 
-	MemoryMonitoringFlag = &cli.StringFlag{
-		Name:  "memory-monitoring",
-		Usage: "Memory monitoring setting: enable or disable",
+	ResourceUsageFlag = &cli.StringFlag{
+		Name:  "resource-usage-monitoring",
+		Usage: "Resource usage monitoring: enable or disable",
 	}
 
 	InstanceTypeFlag = &cli.StringFlag{

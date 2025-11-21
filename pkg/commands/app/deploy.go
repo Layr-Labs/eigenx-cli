@@ -21,7 +21,7 @@ var DeployCommand = &cli.Command{
 		common.EnvFlag,
 		common.FileFlag,
 		common.LogVisibilityFlag,
-		common.MemoryMonitoringFlag,
+		common.ResourceUsageFlag,
 		common.InstanceTypeFlag,
 		common.NameFlag,
 		common.WebsiteFlag,
@@ -83,10 +83,10 @@ func deployAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get log settings: %w", err)
 	}
 
-	// 9. Get memory monitoring preference
-	monitoringMemoryAllow, err := utils.GetMemoryMonitoringSetting(cCtx)
+	// 9. Get resource usage preference
+	resourceUsageAllow, err := utils.GetResourceUsageSetting(cCtx)
 	if err != nil {
-		return fmt.Errorf("failed to get memory monitoring setting: %w", err)
+		return fmt.Errorf("failed to get resource usage setting: %w", err)
 	}
 
 	// 10. Generate random salt
@@ -107,7 +107,7 @@ func deployAction(cCtx *cli.Context) error {
 	}
 
 	// 12. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
-	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appIDToBeDeployed, dockerfilePath, imageRef, envFilePath, logRedirect, monitoringMemoryAllow, instanceType, 3)
+	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appIDToBeDeployed, dockerfilePath, imageRef, envFilePath, logRedirect, resourceUsageAllow, instanceType, 3)
 	if err != nil {
 		return err
 	}

@@ -31,16 +31,16 @@ import (
 // PrepareReleaseFromContext prepares a release with separated Dockerfile handling
 // The dockerfile path and env file path are provided as parameters (already collected earlier)
 // maxPushRetries controls how many times to retry on push permission errors (0 = no retries)
-func PrepareReleaseFromContext(cCtx *cli.Context, environmentConfig *common.EnvironmentConfig, appID gethcommon.Address, dockerfilePath string, imageRef string, envFilePath string, logRedirect string, monitoringMemoryAllow string, instanceType string, maxPushRetries int) (appcontrollerV2.IAppControllerRelease, string, error) {
+func PrepareReleaseFromContext(cCtx *cli.Context, environmentConfig *common.EnvironmentConfig, appID gethcommon.Address, dockerfilePath string, imageRef string, envFilePath string, logRedirect string, resourceUsageAllow string, instanceType string, maxPushRetries int) (appcontrollerV2.IAppControllerRelease, string, error) {
 	logger := common.LoggerFromContext(cCtx)
 
 	// Create operation closures that capture context
 	buildAndPush := func(ref string) (string, error) {
-		return buildAndPushLayeredImage(cCtx, *environmentConfig, dockerfilePath, ref, logRedirect, monitoringMemoryAllow, envFilePath)
+		return buildAndPushLayeredImage(cCtx, *environmentConfig, dockerfilePath, ref, logRedirect, resourceUsageAllow, envFilePath)
 	}
 
 	layerRemoteImage := func(ref string) (string, error) {
-		return layerRemoteImageIfNeeded(cCtx, *environmentConfig, ref, logRedirect, monitoringMemoryAllow, envFilePath)
+		return layerRemoteImageIfNeeded(cCtx, *environmentConfig, ref, logRedirect, resourceUsageAllow, envFilePath)
 	}
 
 	// Ensure image is compatible with EigenX (either build from Dockerfile or layer existing image)
@@ -178,7 +178,7 @@ func retryImagePushOperation(
 	return imageRef, err
 }
 
-func layerRemoteImageIfNeeded(cCtx *cli.Context, environmentConfig common.EnvironmentConfig, imageRef, logRedirect, monitoringMemoryAllow, envFilePath string) (string, error) {
+func layerRemoteImageIfNeeded(cCtx *cli.Context, environmentConfig common.EnvironmentConfig, imageRef, logRedirect, resourceUsageAllow, envFilePath string) (string, error) {
 	// Check if the provided image is missing image layering, which is required for EigenX
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -201,7 +201,7 @@ func layerRemoteImageIfNeeded(cCtx *cli.Context, environmentConfig common.Enviro
 		}
 
 		logger.Info("Adding EigenX components to create %s from %s...", targetImageRef, imageRef)
-		layeredImageRef, err := layerLocalImage(cCtx, dockerClient, environmentConfig, imageRef, targetImageRef, logRedirect, monitoringMemoryAllow, envFilePath)
+		layeredImageRef, err := layerLocalImage(cCtx, dockerClient, environmentConfig, imageRef, targetImageRef, logRedirect, resourceUsageAllow, envFilePath)
 		if err != nil {
 			return "", fmt.Errorf("failed to layer published image: %w", err)
 		}

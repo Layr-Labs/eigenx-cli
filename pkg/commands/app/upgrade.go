@@ -20,7 +20,7 @@ var UpgradeCommand = &cli.Command{
 		common.EnvFlag,
 		common.FileFlag,
 		common.LogVisibilityFlag,
-		common.MemoryMonitoringFlag,
+		common.ResourceUsageFlag,
 		common.InstanceTypeFlag,
 	}...),
 	Action: upgradeAction,
@@ -79,14 +79,14 @@ func upgradeAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get log settings: %w", err)
 	}
 
-	// 10. Get memory monitoring preference
-	monitoringMemoryAllow, err := utils.GetMemoryMonitoringSetting(cCtx)
+	// 10. Get resource usage preference
+	resourceUsageAllow, err := utils.GetResourceUsageSetting(cCtx)
 	if err != nil {
-		return fmt.Errorf("failed to get memory monitoring setting: %w", err)
+		return fmt.Errorf("failed to get resource usage setting: %w", err)
 	}
 
 	// 11. Prepare the release (includes build/push if needed, with automatic retry on permission errors)
-	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appID, dockerfilePath, imageRef, envFilePath, logRedirect, monitoringMemoryAllow, instanceType, 3)
+	release, imageRef, err := utils.PrepareReleaseFromContext(cCtx, preflightCtx.EnvironmentConfig, appID, dockerfilePath, imageRef, envFilePath, logRedirect, resourceUsageAllow, instanceType, 3)
 	if err != nil {
 		return err
 	}

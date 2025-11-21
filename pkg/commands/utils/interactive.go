@@ -893,16 +893,16 @@ func GetLogSettingsInteractive(cCtx *cli.Context) (logRedirect string, publicLog
 	}
 }
 
-// GetMemoryMonitoringSetting returns the memory monitoring configuration from flags or interactive prompt
-func GetMemoryMonitoringSetting(cCtx *cli.Context) (string, error) {
-	if flagValue := cCtx.String("memory-monitoring"); flagValue != "" {
+// GetResourceUsageSetting returns the resource usage configuration from flags or prompt
+func GetResourceUsageSetting(cCtx *cli.Context) (string, error) {
+	if flagValue := cCtx.String("resource-usage-monitoring"); flagValue != "" {
 		switch strings.ToLower(flagValue) {
 		case "enable":
 			return "always", nil
 		case "disable":
 			return "never", nil
 		default:
-			return "", fmt.Errorf("invalid --memory-monitoring value: %s (must be enable or disable)", flagValue)
+			return "", fmt.Errorf("invalid --resource-usage-monitoring value: %s (must be enable or disable)", flagValue)
 		}
 	}
 
@@ -911,9 +911,9 @@ func GetMemoryMonitoringSetting(cCtx *cli.Context) (string, error) {
 		"No",
 	}
 
-	choice, err := output.SelectString("Enable memory monitoring?", options)
+	choice, err := output.SelectString("Show resource usage (CPU/memory) for your app?", options)
 	if err != nil {
-		return "", fmt.Errorf("failed to get memory monitoring choice: %w", err)
+		return "", fmt.Errorf("failed to get resource usage choice: %w", err)
 	}
 
 	switch choice {

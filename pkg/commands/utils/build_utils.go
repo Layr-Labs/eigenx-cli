@@ -235,7 +235,7 @@ func checkIfImageAlreadyLayeredForEigenX(dockerClient *client.Client, ctx contex
 // Image Building and Pushing
 // ============================================================================
 
-func buildAndPushLayeredImage(cCtx *cli.Context, environmentConfig common.EnvironmentConfig, dockerfilePath, targetImageRef, logRedirect, monitoringMemoryAllow, envFilePath string) (string, error) {
+func buildAndPushLayeredImage(cCtx *cli.Context, environmentConfig common.EnvironmentConfig, dockerfilePath, targetImageRef, logRedirect, resourceUsageAllow, envFilePath string) (string, error) {
 	logger := common.LoggerFromContext(cCtx)
 
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -253,10 +253,10 @@ func buildAndPushLayeredImage(cCtx *cli.Context, environmentConfig common.Enviro
 		return "", fmt.Errorf("failed to build base image: %w", err)
 	}
 
-	return layerLocalImage(cCtx, dockerClient, environmentConfig, baseImageTag, targetImageRef, logRedirect, monitoringMemoryAllow, envFilePath)
+	return layerLocalImage(cCtx, dockerClient, environmentConfig, baseImageTag, targetImageRef, logRedirect, resourceUsageAllow, envFilePath)
 }
 
-func layerLocalImage(cCtx *cli.Context, dockerClient *client.Client, environmentConfig common.EnvironmentConfig, sourceImageRef, targetImageRef, logRedirect, monitoringMemoryAllow, envFilePath string) (string, error) {
+func layerLocalImage(cCtx *cli.Context, dockerClient *client.Client, environmentConfig common.EnvironmentConfig, sourceImageRef, targetImageRef, logRedirect, resourceUsageAllow, envFilePath string) (string, error) {
 	logger := common.LoggerFromContext(cCtx)
 
 	// Extract original command and user from source image
@@ -286,13 +286,13 @@ func layerLocalImage(cCtx *cli.Context, dockerClient *client.Client, environment
 	}
 
 	layeredDockerfileContent, err := processTemplate(LayeredDockerfilePath, LayeredDockerfileTemplateData{
-		BaseImage:             sourceImageRef,
-		OriginalCmd:           originalCmdStr,
-		OriginalUser:          originalUser,
-		LogRedirect:           logRedirect,
-		MonitoringMemoryAllow: monitoringMemoryAllow,
-		IncludeTLS:            includeTLS,
-		EigenXCLIVersion:      version.GetVersion(),
+		BaseImage:          sourceImageRef,
+		OriginalCmd:        originalCmdStr,
+		OriginalUser:       originalUser,
+		LogRedirect:        logRedirect,
+		ResourceUsageAllow: resourceUsageAllow,
+		IncludeTLS:         includeTLS,
+		EigenXCLIVersion:   version.GetVersion(),
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to process dockerfile template: %w", err)
