@@ -140,7 +140,7 @@ func listAction(cCtx *cli.Context) error {
 
 func infoAction(cCtx *cli.Context) error {
 	// Get app address from args or interactive selection
-	appID, err := utils.GetAppIDInteractive(cCtx, 0, "view")
+	appID, err := utils.GetAppIDInteractive(cCtx, nil, 0, "view")
 	if err != nil {
 		return fmt.Errorf("failed to get app address: %w", err)
 	}
@@ -158,14 +158,14 @@ func logsAction(cCtx *cli.Context) error {
 	fmt.Println()
 	logger := common.LoggerFromContext(cCtx)
 
-	appID, err := utils.GetAppIDInteractive(cCtx, 0, "view logs for")
+	resolver, err := utils.NewAppResolver(cCtx)
 	if err != nil {
-		return fmt.Errorf("failed to get app address: %w", err)
+		return fmt.Errorf("failed to create app resolver: %w", err)
 	}
 
-	environmentConfig, err := utils.GetEnvironmentConfig(cCtx)
+	appID, err := utils.GetAppIDInteractive(cCtx, resolver, 0, "view logs for")
 	if err != nil {
-		return fmt.Errorf("failed to get environment config: %w", err)
+		return fmt.Errorf("failed to get app address: %w", err)
 	}
 
 	userApiClient, err := utils.NewUserApiClient(cCtx)
@@ -173,8 +173,7 @@ func logsAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to create API client: %w", err)
 	}
 
-	profileName := utils.GetAppProfileName(cCtx, appID)
-	formattedApp := common.FormatAppDisplay(environmentConfig.Name, appID, profileName)
+	formattedApp := resolver.FormatAppDisplay(appID)
 
 	logs, err := userApiClient.GetLogs(cCtx, appID)
 	watchMode := cCtx.Bool(common.WatchFlag.Name)

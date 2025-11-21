@@ -239,14 +239,32 @@ func GetLayeredTargetImageInteractive(cCtx *cli.Context, sourceImageRef string) 
 }
 
 // GetAppIDInteractive gets app ID from args or interactive selection
-func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcommon.Address, error) {
-	// First try to get from args
-	appID, err := GetAppID(cCtx, argIndex)
-	if err == nil {
-		return appID, nil
+// If resolver is provided, uses it to avoid duplicate API calls.
+// If resolver is nil, creates a new one.
+func GetAppIDInteractive(cCtx *cli.Context, resolver *AppResolver, argIndex int, action string) (ethcommon.Address, error) {
+	// Create resolver if not provided
+	if resolver == nil {
+		var err error
+		resolver, err = NewAppResolver(cCtx)
+		if err != nil {
+			return ethcommon.Address{}, fmt.Errorf("failed to create app resolver: %w", err)
+		}
 	}
 
-	// If not provided, show interactive selection
+	// Check if app ID or name provided as argument
+	if cCtx.Args().Len() > argIndex {
+		nameOrID := cCtx.Args().Get(argIndex)
+
+		// Try to resolve (checks remote profiles first, then local registry)
+		resolvedID, err := resolver.ResolveAppID(nameOrID)
+		if err == nil {
+			return resolvedID, nil
+		}
+		// Resolution failed - return error since user explicitly provided a name/ID
+		return ethcommon.Address{}, fmt.Errorf("failed to resolve app '%s': %w", nameOrID, err)
+	}
+
+	// If no argument provided, show interactive selection message
 	fmt.Printf("\nSelect an app to %s:\n", action)
 
 	// Get list of apps for the user
@@ -270,12 +288,6 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 		return ethcommon.Address{}, fmt.Errorf("no apps found for your address")
 	}
 
-	// Get environment config for context
-	environmentConfig, err := GetEnvironmentConfig(cCtx)
-	if err != nil {
-		return ethcommon.Address{}, fmt.Errorf("failed to get environment config: %w", err)
-	}
-
 	// Build apps list with status priority
 	type appItem struct {
 		addr    ethcommon.Address
@@ -287,9 +299,6 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 
 	// Get API statuses for all Started apps to identify which have exited
 	exitedApps := getExitedApps(cCtx, result.Apps, result.AppConfigsMem)
-
-	// Get profile names for all apps from API (for better display in selection list)
-	profileNames := getProfileNamesForApps(cCtx, result.Apps)
 
 	// Determine which apps are eligible for the action
 	isEligible := func(status common.AppStatus, addr ethcommon.Address) bool {
@@ -319,10 +328,7 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 			statusStr = "Exited"
 		}
 
-		// Prioritize API profile name, fall back to local registry
-		profileName := profileNames[appAddr.Hex()]
-		displayName := common.FormatAppDisplay(environmentConfig.Name, appAddr, profileName)
-
+		displayName := resolver.FormatAppDisplay(appAddr)
 		appItems = append(appItems, appItem{
 			addr:    appAddr,
 			config:  config,
@@ -384,75 +390,26 @@ func GetAppIDInteractive(cCtx *cli.Context, argIndex int, action string) (ethcom
 	return ethcommon.Address{}, fmt.Errorf("failed to find selected app")
 }
 
-// GetOrPromptAppName gets app name from flag or prompts interactively
-func GetOrPromptAppName(cCtx *cli.Context, context string, imageRef string) (string, error) {
-	// Check if provided via flag
-	if name := cCtx.String(common.NameFlag.Name); name != "" {
-		// Validate the provided name
-		if err := common.ValidateAppName(name); err != nil {
-			return "", fmt.Errorf("invalid app name: %w", err)
-		}
-		// Check if it's available
-		if !IsAppNameAvailable(context, name) {
-			fmt.Printf("Warning: App name '%s' is already taken.\n", name)
-			return GetAvailableAppNameInteractive(context, imageRef)
-		}
-		return name, nil
-	}
-
-	// No flag provided, get interactively
-	return GetAvailableAppNameInteractive(context, imageRef)
-}
-
 // ExtractAndFindAvailableName extracts a base name from imageRef and finds an available variant
-func ExtractAndFindAvailableName(context, imageRef string) (string, error) {
+func ExtractAndFindAvailableName(cCtx *cli.Context, context, imageRef string) (string, error) {
 	baseName, err := extractAppNameFromImage(imageRef)
 	if err != nil {
 		return "", fmt.Errorf("failed to extract app name from image reference %s: %w", imageRef, err)
 	}
-	return findAvailableName(context, baseName), nil
+	return findAvailableName(cCtx, nil, baseName), nil
 }
 
-// GetAvailableAppNameInteractive interactively gets an available app name
-func GetAvailableAppNameInteractive(context, imageRef string) (string, error) {
-	// Start with a suggestion from the image
-	suggestedName, err := ExtractAndFindAvailableName(context, imageRef)
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		fmt.Printf("\nApp name selection:\n")
-		name, err := output.InputString(
-			"Enter app name:",
-			fmt.Sprintf("A friendly name to identify your app (suggested: %s)", suggestedName),
-			suggestedName,
-			common.ValidateAppName,
-		)
+// IsAppNameAvailable checks if an app name is available in the given context.
+// If resolver is provided, uses it; otherwise creates a new one.
+func IsAppNameAvailable(cCtx *cli.Context, resolver *AppResolver, name string) bool {
+	if resolver == nil {
+		var err error
+		resolver, err = NewAppResolver(cCtx)
 		if err != nil {
-			// If input fails, use the suggestion
-			name = suggestedName
+			return false // If we can't check, assume not available to be safe
 		}
-
-		// Check if the name is available
-		if IsAppNameAvailable(context, name) {
-			return name, nil
-		}
-
-		// Name is taken, suggest alternatives and loop
-		fmt.Printf("App name '%s' is already taken.\n", name)
-
-		// Suggest alternatives based on their input
-		suggestedName = findAvailableName(context, name)
-		fmt.Printf("Suggested alternative: %s\n", suggestedName)
 	}
-}
-
-// IsAppNameAvailable checks if an app name is available in the given context
-func IsAppNameAvailable(context, name string) bool {
-	apps, _ := common.ListApps(context)
-	_, exists := apps[name]
-	return !exists
+	return resolver.IsNameAvailable(name)
 }
 
 // GetEnvFileInteractive prompts for env file path if not provided
@@ -717,25 +674,18 @@ func displayDetectedRegistries(registries []registryInfo, appName string) {
 	fmt.Println()
 }
 
-// findAvailableName finds an available name by appending numbers if needed
-func findAvailableName(context, baseName string) string {
-	apps, _ := common.ListApps(context)
-
-	// Check if base name is available
-	if _, exists := apps[baseName]; !exists {
-		return baseName
-	}
-
-	// Try with incrementing numbers
-	for i := 2; i <= 100; i++ {
-		candidate := fmt.Sprintf("%s-%d", baseName, i)
-		if _, exists := apps[candidate]; !exists {
-			return candidate
+// findAvailableName finds an available name by appending numbers if needed.
+// If resolver is provided, uses it; otherwise creates a new one.
+func findAvailableName(cCtx *cli.Context, resolver *AppResolver, baseName string) string {
+	if resolver == nil {
+		var err error
+		resolver, err = NewAppResolver(cCtx)
+		if err != nil {
+			// Fallback to timestamp if resolver fails
+			return fmt.Sprintf("%s-%d", baseName, time.Now().Unix())
 		}
 	}
-
-	// Fallback to timestamp if somehow we have 100+ duplicates
-	return fmt.Sprintf("%s-%d", baseName, time.Now().Unix())
+	return resolver.FindAvailableName(baseName)
 }
 
 // extractAppNameFromImage extracts the app name from an image reference
