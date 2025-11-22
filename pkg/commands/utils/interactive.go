@@ -843,6 +843,39 @@ func GetLogSettingsInteractive(cCtx *cli.Context) (logRedirect string, publicLog
 	}
 }
 
+// GetResourceUsageSetting returns the resource usage configuration from flags or prompt
+func GetResourceUsageSetting(cCtx *cli.Context) (string, error) {
+	if flagValue := cCtx.String("resource-usage-monitoring"); flagValue != "" {
+		switch strings.ToLower(flagValue) {
+		case "enable":
+			return "always", nil
+		case "disable":
+			return "never", nil
+		default:
+			return "", fmt.Errorf("invalid --resource-usage-monitoring value: %s (must be enable or disable)", flagValue)
+		}
+	}
+
+	options := []string{
+		"Yes",
+		"No",
+	}
+
+	choice, err := output.SelectString("Show resource usage (CPU/memory) for your app?", options)
+	if err != nil {
+		return "", fmt.Errorf("failed to get resource usage choice: %w", err)
+	}
+
+	switch choice {
+	case "Yes":
+		return "always", nil
+	case "No":
+		return "never", nil
+	default:
+		return "", fmt.Errorf("unexpected choice: %s", choice)
+	}
+}
+
 // GetInstanceTypeInteractive prompts for instance type if not provided via flag.
 // The defaultSKU parameter is used as the default selection in interactive mode:
 // - For new deployments: pass empty string (uses first SKU from backend)

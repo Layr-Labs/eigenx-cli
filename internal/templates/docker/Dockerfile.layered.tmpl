@@ -46,6 +46,7 @@ RUN chmod +x /usr/local/bin/compute-source-env.sh \
 LABEL tee.launch_policy.log_redirect={{.LogRedirect}}
 {{- end}}
 
+LABEL tee.launch_policy.monitoring_memory_allow={{.ResourceUsageAllow}}
 LABEL eigenx_cli_version={{.EigenXCLIVersion}}
 LABEL eigenx_use_ita=True
 
