@@ -33,7 +33,7 @@ RUN chmod 755 /usr/local/bin/compute-source-env.sh \
     && chmod 644 /usr/local/bin/kms-signing-public-key.pem
 
 # Store original user - entrypoint will drop privileges to this user after TEE setup
-ENV ORIGINAL_USER={{.OriginalUser}}
+ENV __EIGENX_ORIGINAL_USER={{.OriginalUser}}
 {{- else}}
 # Make binaries executable (preserve existing permissions, just add execute)
 RUN chmod +x /usr/local/bin/compute-source-env.sh \
