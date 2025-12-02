@@ -111,7 +111,7 @@ echo "compute-source-env.sh: Environment sourced."
 # Drop privileges to original user for the application command
 if [ -n "$__EIGENX_ORIGINAL_USER" ] && [ "$(id -u)" = "0" ]; then
     echo "compute-source-env.sh: Dropping privileges to user: $__EIGENX_ORIGINAL_USER"
-    exec su -s /bin/sh "$__EIGENX_ORIGINAL_USER" -- "$@"
+    exec su -s /bin/sh "$__EIGENX_ORIGINAL_USER" -c 'exec "$@"' -- sh "$@"
 fi
 
 exec "$@"
