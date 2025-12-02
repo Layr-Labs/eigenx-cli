@@ -107,4 +107,11 @@ setup_tls() {
 setup_tls
 
 echo "compute-source-env.sh: Environment sourced."
+
+# Drop privileges to original user for the application command
+if [ -n "$ORIGINAL_USER" ] && [ "$(id -u)" = "0" ]; then
+    echo "compute-source-env.sh: Dropping privileges to user: $ORIGINAL_USER"
+    exec su -s /bin/sh "$ORIGINAL_USER" -c 'exec "$@"' -- sh "$@"
+fi
+
 exec "$@"
