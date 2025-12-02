@@ -244,7 +244,8 @@ var versionCheckChannel = make(chan *common.UpdateInfo, 1)
 // InitVersionCheck starts an async version check for prod builds
 func InitVersionCheck(cCtx *cli.Context) {
 	// Skip for non-prod builds or specific commands
-	if common.Build != "prod" || cCtx.Command.Name == "upgrade" || cCtx.Command.Name == "version" || cCtx.Command.Name == "help" {
+	subcommand := cCtx.Args().First()
+	if common.Build != "prod" || subcommand == "upgrade" || subcommand == "version" || subcommand == "help" {
 		return
 	}
 
