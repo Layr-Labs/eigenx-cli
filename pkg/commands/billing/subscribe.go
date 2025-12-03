@@ -75,14 +75,16 @@ var SubscribeCommand = &cli.Command{
 
 		// Poll for subscription activation
 		logger.Info("\nWaiting for payment completion...")
-		timeout := time.After(5 * time.Minute)
+		timeout := time.After(5 * time.Second)
 		ticker := time.NewTicker(3 * time.Second)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-timeout:
-				return fmt.Errorf("payment confirmation timed out after 5 minutes. If you completed payment, run 'eigenx billing status' to check status")
+				logger.Info("\nPayment confirmation timed out after 5 minutes.")
+				logger.Info("If you completed payment, run 'eigenx billing status' to check status.")
+				return nil
 			case <-ticker.C:
 				subscription, err := client.GetUserSubscription(cCtx)
 				if err != nil {
