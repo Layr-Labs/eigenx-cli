@@ -82,7 +82,9 @@ var SubscribeCommand = &cli.Command{
 		for {
 			select {
 			case <-timeout:
-				return fmt.Errorf("payment confirmation timed out after 5 minutes. If you completed payment, run 'eigenx billing status' to check status")
+				logger.Info("\nPayment confirmation timed out after 5 minutes.")
+				logger.Info("If you completed payment, run 'eigenx billing status' to check status.")
+				return nil
 			case <-ticker.C:
 				subscription, err := client.GetUserSubscription(cCtx)
 				if err != nil {
