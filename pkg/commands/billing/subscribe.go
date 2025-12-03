@@ -75,7 +75,7 @@ var SubscribeCommand = &cli.Command{
 
 		// Poll for subscription activation
 		logger.Info("\nWaiting for payment completion...")
-		timeout := time.After(5 * time.Second)
+		timeout := time.After(5 * time.Minute)
 		ticker := time.NewTicker(3 * time.Second)
 		defer ticker.Stop()
 
