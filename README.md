@@ -1,5 +1,8 @@
 # EigenX CLI
 
+> [!NOTE]
+> EigenX CLI is being deprecated in lieu of [Ecloud CLI](https://github.com/Layr-Labs/ecloud). Please follow the [migration guide](https://github.com/Layr-Labs/ecloud/blob/master/MIGRATION.md) to migrate your app deployment credentials to the new CLI. 
+
 **Deploy verifiable applications in Trusted Execution Environments (TEEs)**
 
 EigenX lets you deploy containerized applications that run in secure, verifiable compute environments with built-in private key management. Your apps get a unique wallet they control, enabling autonomous onchain actions while keeping secrets safe.
