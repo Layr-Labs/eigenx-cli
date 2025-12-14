@@ -1,7 +1,7 @@
 # EigenX CLI
 
 > [!NOTE]
-> EigenX CLI is being deprecated in lieu of [Ecloud CLI](https://github.com/Layr-Labs/ecloud). Please follow the [migration guide](https://github.com/Layr-Labs/ecloud/blob/master/MIGRATION.md) to migrate your app deployment credentials to the new CLI. 
+> EigenX CLI is being deprecated in lieu of [Ecloud CLI](https://github.com/Layr-Labs/ecloud). Please follow the [migration guide](https://github.com/Layr-Labs/ecloud/blob/master/MIGRATION.md) to migrate your app deployment credentials to the new CLI. You can still use eigenx to maintain your application but no new features will will be published to it. We recommned you migrate as soon as possible. Thank you.
 
 **Deploy verifiable applications in Trusted Execution Environments (TEEs)**
 
